@@ -17,11 +17,17 @@ class ChannelCore(RequestCore):
         self.continuation = None
 
     def prepare_request(self):
+        if not searchKey:
+            raise Exception('INNERTUBE API key (searchKey) is not set.')
         self.url = 'https://www.youtube.com/youtubei/v1/browse' + "?" + urlencode({
             'key': searchKey,
             "prettyPrint": "false"
         })
         self.data = copy.deepcopy(requestPayload)
+        context = self.data.setdefault('context', {})
+        client = context.setdefault('client', {})
+        client.setdefault('hl', client.get('hl'))
+        client.setdefault('gl', client.get('gl'))
         if not self.continuation:
             self.data["params"] = self.params
             self.data["browseId"] = self.browseId
@@ -37,66 +43,60 @@ class ChannelCore(RequestCore):
             "lastEdited": getValue(i, ["publishedTimeText", "simpleText"]),
         }
 
-    def parse_response(self):
-        response = self.data.json()
+    def _safe_extend_thumbnails(self, resp, path):
+        val = getValue(resp, path)
+        if val:
+            try:
+                return list(val)
+            except Exception:
+                return []
+        return []
 
+    def parse_response(self):
+        resp = None
+        try:
+            resp = self.data.json()
+        except Exception:
+            resp = json.loads(self.data.text) if hasattr(self.data, "text") else {}
         thumbnails = []
-        try:
-            thumbnails.extend(getValue(response, ["header", "c4TabbedHeaderRenderer", "avatar", "thumbnails"]))
-        except:
-            pass
-        try:
-            thumbnails.extend(getValue(response, ["metadata", "channelMetadataRenderer", "avatar", "thumbnails"]))
-        except:
-            pass
-        try:
-            thumbnails.extend(getValue(response, ["microformat", "microformatDataRenderer", "thumbnail", "thumbnails"]))
-        except:
-            pass
-        
+        thumbnails.extend(self._safe_extend_thumbnails(resp, ["header", "c4TabbedHeaderRenderer", "avatar", "thumbnails"]))
+        thumbnails.extend(self._safe_extend_thumbnails(resp, ["metadata", "channelMetadataRenderer", "avatar", "thumbnails"]))
+        thumbnails.extend(self._safe_extend_thumbnails(resp, ["microformat", "microformatDataRenderer", "thumbnail", "thumbnails"]))
         tabData: dict = {}
         playlists: list = []
-
-        for tab in getValue(response, ["contents", "twoColumnBrowseResultsRenderer", "tabs"]):
-            tab: dict
+        tabs = getValue(resp, ["contents", "twoColumnBrowseResultsRenderer", "tabs"]) or []
+        for tab in tabs:
             title = getValue(tab, ["tabRenderer", "title"])
             if title == "Playlists":
-                playlist = getValue(tab,
-                                    ["tabRenderer", "content", "sectionListRenderer", "contents", 0, "itemSectionRenderer",
-                                     "contents", 0, "gridRenderer", "items"])
-                if playlist is not None and getValue(playlist, [0, "gridPlaylistRenderer"]):
+                playlist = getValue(tab, ["tabRenderer", "content", "sectionListRenderer", "contents", 0, "itemSectionRenderer", "contents", 0, "gridRenderer", "items"])
+                if playlist and getValue(playlist, [0, "gridPlaylistRenderer"]):
                     for i in playlist:
                         if getValue(i, ["continuationItemRenderer"]):
-                            self.continuation = getValue(i, ["continuationItemRenderer", "continuationEndpoint",
-                                                             "continuationCommand", "token"])
+                            self.continuation = getValue(i, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
                             break
-                        i: dict = i["gridPlaylistRenderer"]
-                        playlists.append(self.playlist_parse(i))
+                        grid = getValue(i, ["gridPlaylistRenderer"])
+                        if grid:
+                            playlists.append(self.playlist_parse(grid))
             elif title == "About":
-                tabData = tab["tabRenderer"]
+                tabData = getValue(tab, ["tabRenderer"]) or {}
 
-        metadata = getValue(tabData,
-                            ["content", "sectionListRenderer", "contents", 0, "itemSectionRenderer", "contents", 0,
-                             "channelAboutFullMetadataRenderer"])
+        metadata = getValue(tabData, ["content", "sectionListRenderer", "contents", 0, "itemSectionRenderer", "contents", 0, "channelAboutFullMetadataRenderer"]) or {}
 
         self.result = {
-            "id": getValue(response, ["metadata", "channelMetadataRenderer", "externalId"]),
-            "url": getValue(response, ["metadata", "channelMetadataRenderer", "channelUrl"]),
-            "description": getValue(response, ["metadata", "channelMetadataRenderer", "description"]),
-            "title": getValue(response, ["metadata", "channelMetadataRenderer", "title"]),
-            "banners": getValue(response, ["header", "c4TabbedHeaderRenderer", "banner", "thumbnails"]),
+            "id": getValue(resp, ["metadata", "channelMetadataRenderer", "externalId"]),
+            "url": getValue(resp, ["metadata", "channelMetadataRenderer", "channelUrl"]),
+            "description": getValue(resp, ["metadata", "channelMetadataRenderer", "description"]),
+            "title": getValue(resp, ["metadata", "channelMetadataRenderer", "title"]),
+            "banners": getValue(resp, ["header", "c4TabbedHeaderRenderer", "banner", "thumbnails"]),
             "subscribers": {
-                "simpleText": getValue(response,
-                                       ["header", "c4TabbedHeaderRenderer", "subscriberCountText", "simpleText"]),
-                "label": getValue(response, ["header", "c4TabbedHeaderRenderer", "subscriberCountText", "accessibility",
-                                             "accessibilityData", "label"])
+                "simpleText": getValue(resp, ["header", "c4TabbedHeaderRenderer", "subscriberCountText", "simpleText"]),
+                "label": getValue(resp, ["header", "c4TabbedHeaderRenderer", "subscriberCountText", "accessibility", "accessibilityData", "label"])
             },
             "thumbnails": thumbnails,
-            "availableCountryCodes": getValue(response,
-                                              ["metadata", "channelMetadataRenderer", "availableCountryCodes"]),
-            "isFamilySafe": getValue(response, ["metadata", "channelMetadataRenderer", "isFamilySafe"]),
-            "keywords": getValue(response, ["metadata", "channelMetadataRenderer", "keywords"]),
-            "tags": getValue(response, ["microformat", "microformatDataRenderer", "tags"]),
+            "availableCountryCodes": getValue(resp, ["metadata", "channelMetadataRenderer", "availableCountryCodes"]),
+            "isFamilySafe": getValue(resp, ["metadata", "channelMetadataRenderer", "isFamilySafe"]),
+            "keywords": getValue(resp, ["metadata", "channelMetadataRenderer", "keywords"]),
+            "tags": getValue(resp, ["microformat", "microformatDataRenderer", "tags"]),
             "views": getValue(metadata, ["viewCountText", "simpleText"]) if metadata else None,
             "joinedDate": getValue(metadata, ["joinedDateText", "runs", -1, "text"]) if metadata else None,
             "country": getValue(metadata, ["country", "simpleText"]) if metadata else None,
@@ -104,18 +104,20 @@ class ChannelCore(RequestCore):
         }
 
     def parse_next_response(self):
-        response = self.data.json()
-
+        resp = None
+        try:
+            resp = self.data.json()
+        except Exception:
+            resp = json.loads(self.data.text) if hasattr(self.data, "text") else {}
         self.continuation = None
-
-        response = getValue(response, ["onResponseReceivedActions", 0, "appendContinuationItemsAction", "continuationItems"])
-        for i in response:
+        items = getValue(resp, ["onResponseReceivedActions", 0, "appendContinuationItemsAction", "continuationItems"]) or []
+        for i in items:
             if getValue(i, ["continuationItemRenderer"]):
                 self.continuation = getValue(i, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
                 break
-            elif getValue(i, ['gridPlaylistRenderer']):
-                self.result["playlists"].append(self.playlist_parse(getValue(i, ['gridPlaylistRenderer'])))
-            # TODO: Handle other types like gridShowRenderer
+            grid = getValue(i, ['gridPlaylistRenderer']) or getValue(i, ['gridShowRenderer'])
+            if grid:
+                self.result.setdefault("playlists", []).append(self.playlist_parse(grid))
 
     async def async_next(self):
         if not self.continuation:
