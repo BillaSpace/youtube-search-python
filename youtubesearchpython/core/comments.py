@@ -1,4 +1,3 @@
-# comments.py
 import collections
 import copy
 import itertools
@@ -223,6 +222,7 @@ class CommentsCore(RequestCore):
         try:
             if hasattr(response, "json"):
                 return response.json()
+   # there was results hidden soemtime yt gives irrelavant things with results
             if hasattr(response, "text"):
                 return json.loads(response.text)
             if isinstance(response, (str, bytes)):
