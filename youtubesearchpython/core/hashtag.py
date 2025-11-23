@@ -29,165 +29,146 @@ class HashtagCore(ComponentHandler):
         self._getComponents()
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
-        '''Returns the hashtag videos.
-        Args:
-            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
-        Returns:
-            Union[str, dict]: Returns JSON or dictionary.
-        '''
         if mode == ResultMode.json:
-            return json.dumps({'result': self.resultComponents}, indent = 4)
+            return json.dumps({'result': self.resultComponents}, indent=4)
         elif mode == ResultMode.dict:
             return {'result': self.resultComponents}
 
     def next(self) -> bool:
-        '''Gets the videos from the next page. Call result
-        Returns:
-            bool: Returns True if getting more results was successful.
-        '''
         self.response = None
         self.resultComponents = []
         if self.continuationKey:
             self._makeRequest()
             self._getComponents()
-        if self.resultComponents:
-            return True
-        return False
+        return bool(self.resultComponents)
 
     def _getParams(self) -> None:
+        if not searchKey:
+            raise Exception("INNERTUBE API key (searchKey) is not set.")
         requestBody = copy.deepcopy(requestPayload)
-        requestBody['query'] = "#" + self.hashtag
-        requestBody['client'] = {
-            'hl': self.language,
-            'gl': self.region,
-        }
-        requestBodyBytes = json.dumps(requestBody).encode('utf_8')
-        request = Request(
-            'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({
-                'key': searchKey,
-            }),
-            data = requestBodyBytes,
-            headers = {
-                'Content-Type': 'application/json; charset=utf-8',
-                'Content-Length': len(requestBodyBytes),
-                'User-Agent': userAgent,
-            }
-        )
+        requestBody['query'] = "#" + (self.hashtag or "")
+        ctx = requestBody.setdefault('context', {})
+        client = ctx.setdefault('client', {})
+        client.update({
+            'hl': self.language or client.get('hl'),
+            'gl': self.region or client.get('gl'),
+        })
+        requestBodyBytes = json.dumps(requestBody).encode('utf-8')
+        url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({'key': searchKey})
+        req = Request(url, data=requestBodyBytes, headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': userAgent})
         try:
-            response = urlopen(request, timeout=self.timeout).read().decode('utf_8')
-        except:
+            response = urlopen(req, timeout=self.timeout).read().decode('utf-8')
+        except Exception:
             raise Exception('ERROR: Could not make request.')
-        content = self._getValue(json.loads(response), contentPath)
-        for item in self._getValue(content, [0, 'itemSectionRenderer', 'contents']):
-            if hashtagElementKey in item.keys():
+        data = json.loads(response)
+        content = self._getValue(data, contentPath) or []
+        items = self._getValue(content, [0, 'itemSectionRenderer', 'contents']) or []
+        for item in items:
+            if hashtagElementKey in item:
                 self.params = self._getValue(item[hashtagElementKey], ['onTapCommand', 'browseEndpoint', 'params'])
                 return
 
     async def _asyncGetParams(self) -> None:
+        if not searchKey:
+            raise Exception("INNERTUBE API key (searchKey) is not set.")
         requestBody = copy.deepcopy(requestPayload)
-        requestBody['query'] = "#" + self.hashtag
-        requestBody['client'] = {
-            'hl': self.language,
-            'gl': self.region,
-        }
+        requestBody['query'] = "#" + (self.hashtag or "")
+        ctx = requestBody.setdefault('context', {})
+        client = ctx.setdefault('client', {})
+        client.update({
+            'hl': self.language or client.get('hl'),
+            'gl': self.region or client.get('gl'),
+        })
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     'https://www.youtube.com/youtubei/v1/search',
-                    params = {
-                        'key': searchKey,
-                    },
-                    headers = {
-                        'User-Agent': userAgent,
-                    },
-                    json = requestBody,
-                    timeout = self.timeout
+                    params={'key': searchKey},
+                    headers={'User-Agent': userAgent},
+                    json=requestBody,
+                    timeout=self.timeout
                 )
-                response = response.json()
-        except:
+                data = response.json()
+        except Exception:
             raise Exception('ERROR: Could not make request.')
-        content = self._getValue(response, contentPath)
-        for item in self._getValue(content, [0, 'itemSectionRenderer', 'contents']):
-            if hashtagElementKey in item.keys():
+        content = self._getValue(data, contentPath) or []
+        items = self._getValue(content, [0, 'itemSectionRenderer', 'contents']) or []
+        for item in items:
+            if hashtagElementKey in item:
                 self.params = self._getValue(item[hashtagElementKey], ['onTapCommand', 'browseEndpoint', 'params'])
                 return
 
     def _makeRequest(self) -> None:
-        if self.params == None:
+        if self.params is None:
             return
+        if not searchKey:
+            raise Exception("INNERTUBE API key (searchKey) is not set.")
         requestBody = copy.deepcopy(requestPayload)
         requestBody['browseId'] = hashtagBrowseKey
         requestBody['params'] = self.params
-        requestBody['client'] = {
-            'hl': self.language,
-            'gl': self.region,
-        }
+        ctx = requestBody.setdefault('context', {})
+        client = ctx.setdefault('client', {})
+        client.update({
+            'hl': self.language or client.get('hl'),
+            'gl': self.region or client.get('gl'),
+        })
         if self.continuationKey:
             requestBody['continuation'] = self.continuationKey
-        requestBodyBytes = json.dumps(requestBody).encode('utf_8')
-        request = Request(
-            'https://www.youtube.com/youtubei/v1/browse' + '?' + urlencode({
-                'key': searchKey,
-            }),
-            data = requestBodyBytes,
-            headers = {
-                'Content-Type': 'application/json; charset=utf-8',
-                'Content-Length': len(requestBodyBytes),
-                'User-Agent': userAgent,
-            }
-        )
+        requestBodyBytes = json.dumps(requestBody).encode('utf-8')
+        url = 'https://www.youtube.com/youtubei/v1/browse' + '?' + urlencode({'key': searchKey})
+        req = Request(url, data=requestBodyBytes, headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': userAgent})
         try:
-            self.response = urlopen(request, timeout=self.timeout).read().decode('utf_8')
-        except:
+            self.response = urlopen(req, timeout=self.timeout).read().decode('utf-8')
+        except Exception:
             raise Exception('ERROR: Could not make request.')
 
     async def _asyncMakeRequest(self) -> None:
-        if self.params == None:
+        if self.params is None:
             return
+        if not searchKey:
+            raise Exception("INNERTUBE API key (searchKey) is not set.")
         requestBody = copy.deepcopy(requestPayload)
         requestBody['browseId'] = hashtagBrowseKey
         requestBody['params'] = self.params
-        requestBody['client'] = {
-            'hl': self.language,
-            'gl': self.region,
-        }
+        ctx = requestBody.setdefault('context', {})
+        client = ctx.setdefault('client', {})
+        client.update({
+            'hl': self.language or client.get('hl'),
+            'gl': self.region or client.get('gl'),
+        })
         if self.continuationKey:
             requestBody['continuation'] = self.continuationKey
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     'https://www.youtube.com/youtubei/v1/browse',
-                    params = {
-                        'key': searchKey,
-                    },
-                    headers = {
-                        'User-Agent': userAgent,
-                    },
-                    json = requestBody,
-                    timeout = self.timeout
+                    params={'key': searchKey},
+                    headers={'User-Agent': userAgent},
+                    json=requestBody,
+                    timeout=self.timeout
                 )
-                self.response = response.content
-        except:
+                self.response = response.text
+        except Exception:
             raise Exception('ERROR: Could not make request.')
 
     def _getComponents(self) -> None:
-        if self.response == None:
+        if self.response is None:
             return
         self.resultComponents = []
         try:
+            data = json.loads(self.response)
             if not self.continuationKey:
-                responseSource = self._getValue(json.loads(self.response), hashtagVideosPath)
+                responseSource = self._getValue(data, hashtagVideosPath) or []
             else:
-                responseSource = self._getValue(json.loads(self.response), hashtagContinuationVideosPath)
+                responseSource = self._getValue(data, hashtagContinuationVideosPath) or []
+            for element in responseSource:
+                rich = self._getValue(element, [richItemKey, 'content']) or {}
+                if videoElementKey in rich:
+                    videoComponent = self._getVideoComponent(rich)
+                    self.resultComponents.append(videoComponent)
+                if len(self.resultComponents) >= self.limit:
+                    break
             if responseSource:
-                for element in responseSource:
-                    if richItemKey in element.keys():
-                        richItemElement = self._getValue(element, [richItemKey, 'content'])
-                        if videoElementKey in richItemElement.keys():
-                            videoComponent = self._getVideoComponent(richItemElement)
-                            self.resultComponents.append(videoComponent)
-                    if len(self.resultComponents) >= self.limit:
-                        break
                 self.continuationKey = self._getValue(responseSource[-1], continuationKeyPath)
-        except:
+        except Exception:
             raise Exception('ERROR: Could not parse YouTube response.')
