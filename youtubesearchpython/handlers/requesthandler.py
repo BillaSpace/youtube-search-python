@@ -8,48 +8,63 @@ from youtubesearchpython.core.constants import *
 
 class RequestHandler(ComponentHandler):
     def _makeRequest(self) -> None:
-        ''' Fixes #47 '''
         requestBody = copy.deepcopy(requestPayload)
-        requestBody['query'] = self.query
-        requestBody['client'] = {
-            'hl': self.language,
-            'gl': self.region,
-        }
+        requestBody['query'] = self.query or ''
+        context = requestBody.setdefault('context', {})
+        client = context.setdefault('client', {})
+        client.update({
+            'hl': self.language or client.get('hl'),
+            'gl': self.region or client.get('gl'),
+        })
         if self.searchPreferences:
             requestBody['params'] = self.searchPreferences
         if self.continuationKey:
             requestBody['continuation'] = self.continuationKey
-        requestBodyBytes = json.dumps(requestBody).encode('utf_8')
+
+        if not searchKey:
+            raise Exception('INNERTUBE API key (searchKey) is not set.')
+
+        requestBodyBytes = json.dumps(requestBody).encode('utf-8')
+        url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({'key': searchKey})
         request = Request(
-            'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({
-                'key': searchKey,
-            }),
-            data = requestBodyBytes,
-            headers = {
+            url,
+            data=requestBodyBytes,
+            headers={
                 'Content-Type': 'application/json; charset=utf-8',
-                'Content-Length': len(requestBodyBytes),
                 'User-Agent': userAgent,
             }
         )
         try:
-            self.response = urlopen(request, timeout=self.timeout).read().decode('utf_8')
-        except:
-            raise Exception('ERROR: Could not make request.')
-    
+            self.response = urlopen(request, timeout=self.timeout).read().decode('utf-8')
+        except Exception as e:
+            raise Exception('ERROR: Could not make request.') from e
+
     def _parseSource(self) -> None:
         try:
+            data = json.loads(self.response)
             if not self.continuationKey:
-                responseContent = self._getValue(json.loads(self.response), contentPath)
+                responseContent = self._getValue(data, contentPath)
             else:
-                responseContent = self._getValue(json.loads(self.response), continuationContentPath)
+                responseContent = self._getValue(data, continuationContentPath)
+
             if responseContent:
                 for element in responseContent:
-                    if itemSectionKey in element.keys():
+                    if itemSectionKey in element:
                         self.responseSource = self._getValue(element, [itemSectionKey, 'contents'])
-                    if continuationItemKey in element.keys():
+                    if continuationItemKey in element:
                         self.continuationKey = self._getValue(element, continuationKeyPath)
             else:
-                self.responseSource = self._getValue(json.loads(self.response), fallbackContentPath)
-                self.continuationKey = self._getValue(self.responseSource[-1], continuationKeyPath)
-        except:
-            raise Exception('ERROR: Could not parse YouTube response.')
+                fallback = self._getValue(data, fallbackContentPath)
+                if fallback:
+                    self.responseSource = fallback
+                    # attempt to set continuationKey from the last element if present there was url failing like for tracks like pal pal afusic
+                    try:
+                        last = self.responseSource[-1]
+                        self.continuationKey = self._getValue(last, continuationKeyPath)
+                    except Exception:
+                        self.continuationKey = None
+                else:
+                    self.responseSource = []
+                    self.continuationKey = None
+        except Exception as e:
+            raise Exception('ERROR: Could not parse YouTube response.') from e
