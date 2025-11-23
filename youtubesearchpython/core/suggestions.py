@@ -1,60 +1,28 @@
 import json
 from typing import Union
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-
-import httpx
 
 from youtubesearchpython.core.constants import ResultMode, userAgent
 from youtubesearchpython.core.requests import RequestCore
 
 
 class SuggestionsCore(RequestCore):
-    '''Gets search suggestions for the given query.
-
-    Args:
-        language (str, optional): Sets the suggestion language. Defaults to 'en'.
-        region (str, optional): Sets the suggestion region. Defaults to 'US'.
-
-    Examples:
-        Calling `result` method gives the search result.
-
-        >>> suggestions = Suggestions(language = 'en', region = 'US').get('Harry Styles', mode = ResultMode.json)
-        >>> print(suggestions)
-        {
-            'result': [
-                'harry styles',
-                'harry styles treat people with kindness',
-                'harry styles golden music video',
-                'harry styles interview',
-                'harry styles adore you',
-                'harry styles watermelon sugar',
-                'harry styles snl',
-                'harry styles falling',
-                'harry styles tpwk',
-                'harry styles sign of the times',
-                'harry styles jingle ball 2020',
-                'harry styles christmas',
-                'harry styles live',
-                'harry styles juice'
-            ]
-        }
-    '''
-
     def __init__(self, language: str = 'en', region: str = 'US', timeout: int = None):
         super().__init__()
         self.language = language
         self.region = region
         self.timeout = timeout
+        self.responseSource = None
+        self.response = None
 
     def _post_request_processing(self, mode):
         searchSuggestions = []
-
         self.__parseSource()
         for element in self.responseSource:
-            if type(element) is list:
+            if isinstance(element, list):
                 for searchSuggestionElement in element:
-                    searchSuggestions.append(searchSuggestionElement[0])
+                    if searchSuggestionElement and isinstance(searchSuggestionElement, list):
+                        searchSuggestions.append(searchSuggestionElement[0])
                 break
         if mode == ResultMode.dict:
             return {'result': searchSuggestions}
@@ -70,7 +38,6 @@ class SuggestionsCore(RequestCore):
             'gs_ri': 'youtube',
             'ds': 'yt',
         })
-
         self.__makeRequest()
         return self._post_request_processing(mode)
 
@@ -83,15 +50,26 @@ class SuggestionsCore(RequestCore):
             'gs_ri': 'youtube',
             'ds': 'yt',
         })
-
         await self.__makeAsyncRequest()
         return self._post_request_processing(mode)
 
     def __parseSource(self) -> None:
         try:
-            self.responseSource = json.loads(self.response[self.response.index('(') + 1: self.response.index(')')])
-        except:
-            raise Exception('ERROR: Could not parse YouTube response.')
+            raw = (self.response or "").strip()
+            try:
+                self.responseSource = json.loads(raw)
+                if not isinstance(self.responseSource, list):
+                    raise ValueError
+            except Exception:
+                start = raw.find('(')
+                end = raw.rfind(')')
+                if start != -1 and end != -1 and end > start:
+                    payload = raw[start + 1:end]
+                    self.responseSource = json.loads(payload)
+                else:
+                    raise
+        except Exception:
+            raise Exception('ERROR: Could not parse suggestion response.')
 
     def __makeRequest(self) -> None:
         request = self.syncGetRequest()
