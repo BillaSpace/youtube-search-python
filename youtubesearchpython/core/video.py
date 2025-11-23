@@ -1,3 +1,4 @@
+import os
 import copy
 import json
 from typing import Union, List
@@ -9,46 +10,10 @@ from youtubesearchpython.core.componenthandler import getValue, getVideoId
 
 
 CLIENTS = {
-    "MWEB": {
-        'context': {
-            'client': {
-                'clientName': 'MWEB',
-                'clientVersion': '2.20211109.01.00'
-            }
-        },
-        'api_key': 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'
-    },
-    "ANDROID": {
-        'context': {
-            'client': {
-                'clientName': 'ANDROID',
-                'clientVersion': '16.20'
-            }
-        },
-        'api_key': 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'
-    },
-    "ANDROID_EMBED": {
-        'context': {
-            'client': {
-                'clientName': 'ANDROID',
-                'clientVersion': '16.20',
-                'clientScreen': 'EMBED'
-            }
-        },
-        'api_key': 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'
-    },
-    "TV_EMBED": {
-        "context": {
-            "client": {
-                "clientName": "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
-                "clientVersion": "2.0"
-            },
-            "thirdParty": {
-                "embedUrl": "https://www.youtube.com/",
-            }
-        },
-        'api_key': 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8'
-    }
+    "MWEB": {"clientName": "MWEB", "clientVersion": None},
+    "ANDROID": {"clientName": "ANDROID", "clientVersion": None},
+    "ANDROID_EMBED": {"clientName": "ANDROID", "clientVersion": None, "clientScreen": "EMBED"},
+    "TV_EMBED": {"clientName": "TVHTML5_SIMPLY_EMBEDDED_PLAYER", "clientVersion": None}
 }
 
 
@@ -61,8 +26,11 @@ class VideoCore(RequestCore):
         self.videoLink = videoLink
         self.enableHTML = enableHTML
         self.overridedClient = overridedClient
-    
-    # We call this when we use only HTML
+        self.response = None
+        self.responseSource = None
+        self.HTMLresponseSource = None
+        self.__videoComponent = None
+
     def post_request_only_html_processing(self):
         self.__getVideoComponent(self.componentMode)
         self.result = self.__videoComponent
@@ -73,19 +41,31 @@ class VideoCore(RequestCore):
         self.result = self.__videoComponent
 
     def prepare_innertube_request(self):
-        self.url = 'https://www.youtube.com/youtubei/v1/player' + "?" + urlencode({
+        if not searchKey:
+            raise Exception('INNERTUBE API key (searchKey) is not set.')
+        params = {
             'key': searchKey,
             'contentCheckOk': True,
             'racyCheckOk': True,
-            "videoId": getVideoId(self.videoLink)
-        })
-        self.data = copy.deepcopy(CLIENTS[self.overridedClient])
+            'videoId': getVideoId(self.videoLink)
+        }
+        self.url = 'https://www.youtube.com/youtubei/v1/player' + "?" + urlencode(params)
+        data = copy.deepcopy(requestPayload)
+        ctx = data.setdefault('context', {})
+        client = ctx.setdefault('client', {})
+        override = CLIENTS.get(self.overridedClient, {})
+        client['clientName'] = override.get('clientName', client.get('clientName'))
+        if override.get('clientVersion'):
+            client['clientVersion'] = override['clientVersion']
+        else:
+            client['clientVersion'] = client.get('clientVersion', client.get('clientVersion'))
+        self.data = data
 
     async def async_create(self):
         self.prepare_innertube_request()
         response = await self.asyncPostRequest()
-        self.response = response.text
-        if response.status_code == 200:
+        self.response = response.text if hasattr(response, "text") else (response.content.decode() if hasattr(response, "content") else None)
+        if hasattr(response, "status_code") and response.status_code == 200:
             self.post_request_processing()
         else:
             raise Exception('ERROR: Invalid status code.')
@@ -93,35 +73,54 @@ class VideoCore(RequestCore):
     def sync_create(self):
         self.prepare_innertube_request()
         response = self.syncPostRequest()
-        self.response = response.text
-        if response.status_code == 200:
+        self.response = response.text if hasattr(response, "text") else None
+        if hasattr(response, "status_code") and response.status_code == 200:
             self.post_request_processing()
         else:
             raise Exception('ERROR: Invalid status code.')
 
     def prepare_html_request(self):
-        self.url = 'https://www.youtube.com/youtubei/v1/player' + "?" + urlencode({
+        if not searchKey:
+            raise Exception('INNERTUBE API key (searchKey) is not set.')
+        params = {
             'key': searchKey,
             'contentCheckOk': True,
             'racyCheckOk': True,
-            "videoId": getVideoId(self.videoLink)
-        })
-        self.data = CLIENTS["MWEB"]
+            'videoId': getVideoId(self.videoLink)
+        }
+        self.url = 'https://www.youtube.com/youtubei/v1/player' + "?" + urlencode(params)
+        data = copy.deepcopy(requestPayload)
+        ctx = data.setdefault('context', {})
+        client = ctx.setdefault('client', {})
+        override = CLIENTS.get("MWEB", {})
+        client['clientName'] = override.get('clientName', client.get('clientName'))
+        self.data = data
 
     def sync_html_create(self):
         self.prepare_html_request()
         response = self.syncPostRequest()
-        self.HTMLresponseSource = response.json()
+        try:
+            self.HTMLresponseSource = response.json() if hasattr(response, "json") else json.loads(response.text)
+        except Exception:
+            self.HTMLresponseSource = {}
 
     async def async_html_create(self):
         self.prepare_html_request()
         response = await self.asyncPostRequest()
-        self.HTMLresponseSource = response.json()
+        try:
+            self.HTMLresponseSource = response.json() if hasattr(response, "json") else json.loads(response.text)
+        except Exception:
+            self.HTMLresponseSource = {}
 
     def __parseSource(self) -> None:
         try:
-            self.responseSource = json.loads(self.response)
-        except Exception as e:
+            if isinstance(self.response, (str, bytes)):
+                self.responseSource = json.loads(self.response)
+            elif hasattr(self.response, "json"):
+                self.responseSource = self.response.json()
+            else:
+                self.responseSource = {}
+        except Exception:
             raise Exception('ERROR: Could not parse YouTube response.')
 
     def __result(self, mode: int) -> Union[dict, str]:
@@ -133,12 +132,7 @@ class VideoCore(RequestCore):
     def __getVideoComponent(self, mode: str) -> None:
         videoComponent = {}
         if mode in ['getInfo', None]:
-            try:
-                responseSource = self.responseSource
-            except:
-                responseSource = None
-            if self.enableHTML:
-                responseSource = self.HTMLresponseSource
+            responseSource = self.responseSource if not self.enableHTML else self.HTMLresponseSource
             component = {
                 'id': getValue(responseSource, ['videoDetails', 'videoId']),
                 'title': getValue(responseSource, ['videoDetails', 'title']),
@@ -163,16 +157,13 @@ class VideoCore(RequestCore):
                 'isFamilySafe': getValue(responseSource, ['microformat', 'playerMicroformatRenderer', 'isFamilySafe']),
                 'category': getValue(responseSource, ['microformat', 'playerMicroformatRenderer', 'category']),
             }
-            component['isLiveNow'] = component['isLiveContent'] and component['duration']['secondsText'] == "0"
-            component['link'] = 'https://www.youtube.com/watch?v=' + component['id']
-            component['channel']['link'] = 'https://www.youtube.com/channel/' + component['channel']['id']
+            component['isLiveNow'] = bool(component.get('isLiveContent')) and component.get('duration', {}).get('secondsText') == "0"
+            component['link'] = 'https://www.youtube.com/watch?v=' + (component.get('id') or "")
+            channel_id = component.get('channel', {}).get('id')
+            component['channel']['link'] = ('https://www.youtube.com/channel/' + channel_id) if channel_id else None
             videoComponent.update(component)
         if mode in ['getFormats', None]:
-            videoComponent.update(
-                {
-                    "streamingData": getValue(self.responseSource, ["streamingData"])
-                }
-            )
+            videoComponent.update({"streamingData": getValue(self.responseSource, ["streamingData"])})
         if self.enableHTML:
             videoComponent["publishDate"] = getValue(self.HTMLresponseSource, ['microformat', 'playerMicroformatRenderer', 'publishDate'])
             videoComponent["uploadDate"] = getValue(self.HTMLresponseSource, ['microformat', 'playerMicroformatRenderer', 'uploadDate'])
