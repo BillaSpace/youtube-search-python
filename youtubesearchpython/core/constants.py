@@ -132,12 +132,31 @@ searchKey: Optional[str] = None
 
 def _extract_innertube_values_from_html(html: str) -> Dict[str, str]:
     result: Dict[str, str] = {}
-    m_key = re.search(r'"INNERTUBE_API_KEY"\s*:\s*"([^"]+)"', html)
+    # match both single and double quoted occurrences, with some surrounding context
+    m_key = re.search(r'["\']INNERTUBE_API_KEY["\']\s*:\s*["\']([^"\']+)["\']', html)
     if m_key:
         result["api_key"] = m_key.group(1)
-    m_ver = re.search(r'"INNERTUBE_CLIENT_VERSION"\s*:\s*"([^"]+)"', html)
+    m_ver = re.search(r'["\']INNERTUBE_CLIENT_VERSION["\']\s*:\s*["\']([^"\']+)["\']', html)
     if m_ver:
         result["client_version"] = m_ver.group(1)
+    # fallback: look for ytcfg.set calls which sometimes contain keys
+    if "ytcfg" in html and ("INNERTUBE_API_KEY" not in result or "INNERTUBE_CLIENT_VERSION" not in result):
+        # try to capture a JSON object inside ytcfg.set({...})
+        m_cfg = re.search(r"ytcfg\.set\(\s*({.*?})\s*\)", html, flags=re.S)
+        if m_cfg:
+            try:
+                cfg_text = m_cfg.group(1)
+                # crude but effective: extract key values by regex
+                if "INNERTUBE_API_KEY" not in result:
+                    m = re.search(r'["\']INNERTUBE_API_KEY["\']\s*:\s*["\']([^"\']+)["\']', cfg_text)
+                    if m:
+                        result["api_key"] = m.group(1)
+                if "INNERTUBE_CLIENT_VERSION" not in result:
+                    m = re.search(r'["\']INNERTUBE_CLIENT_VERSION["\']\s*:\s*["\']([^"\']+)["\']', cfg_text)
+                    if m:
+                        result["client_version"] = m.group(1)
+            except Exception:
+                pass
     return result
 
 def update_dynamic_keys(url: str = "https://www.youtube.com", timeout: int = 6) -> None:
@@ -147,16 +166,20 @@ def update_dynamic_keys(url: str = "https://www.youtube.com", timeout: int = 6) 
         r = requests.get(url, headers=headers, timeout=timeout)
         if r.status_code == 200 and r.text:
             vals = _extract_innertube_values_from_html(r.text)
-            if "api_key" in vals:
+            if "api_key" in vals and vals["api_key"]:
                 INNERTUBE_API_KEY = vals["api_key"]
-            if "client_version" in vals:
+            if "client_version" in vals and vals["client_version"]:
                 INNERTUBE_CLIENT_VERSION = vals["client_version"]
     except Exception:
         pass
     if INNERTUBE_API_KEY:
         searchKey = INNERTUBE_API_KEY
     if INNERTUBE_CLIENT_VERSION:
-        requestPayload["context"]["client"]["clientVersion"] = INNERTUBE_CLIENT_VERSION
+        # ensure nested keys exist before assignment
+        try:
+            requestPayload.setdefault("context", {}).setdefault("client", {})["clientVersion"] = INNERTUBE_CLIENT_VERSION
+        except Exception:
+            requestPayload["context"]["client"]["clientVersion"] = INNERTUBE_CLIENT_VERSION
 
 try:
     update_dynamic_keys()
