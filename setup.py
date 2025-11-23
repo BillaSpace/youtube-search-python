@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="youtube-search-python",
-    version="1.6.6.Master",
+    version="1.6.6+master",
     author="Prakhar Shukla (forked from CertifiedCoder < Hitesh Kumar Saini)",
     license='MIT',
     author_email="rajnishmishraaa1@gmail.com",
