@@ -1,5 +1,5 @@
 import asyncio
-from youtubesearchpython.aio import *
+from youtubesearchpython.__future__ import *
 
 
 async def main():
@@ -47,3 +47,4 @@ async def main():
         print(f'{index} - {video["title"]}')
 
 asyncio.run(main())
+
