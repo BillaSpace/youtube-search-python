@@ -160,7 +160,10 @@ class CommentsCore(RequestCore):
                 pass
 
         self.commentsComponent["result"].extend(comments)
-        self.continuationKey = self.__getValue(self.responseSource or [], [-1, "continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
+        self.continuationKey = self.__getValue(
+            self.responseSource or [],
+            [-1, "continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"],
+        )
 
     def __result(self, mode: int) -> Union[dict, str]:
         if mode == ResultMode.dict:
@@ -222,7 +225,6 @@ class CommentsCore(RequestCore):
         try:
             if hasattr(response, "json"):
                 return response.json()
-   # there was results hidden soemtime yt gives irrelavant things with results
             if hasattr(response, "text"):
                 return json.loads(response.text)
             if isinstance(response, (str, bytes)):
