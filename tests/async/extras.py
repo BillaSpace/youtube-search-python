@@ -3,16 +3,16 @@ from youtubesearchpython.__future__ import Video, StreamURLFetcher, Suggestions
 from youtubesearchpython import Hashtag, Comments, Transcript, Channel
 
 async def main():
-    video = await Video.get('https://www.youtube.com/watch?v=z0GKGpObgPY', get_upload_date=True)
+    video = await Video.get('https://youtu.be/dQw4w9WgXcQ', get_upload_date=True)
     print(video)
     
-    videoInfo = await Video.getInfo('https://youtu.be/GeWnEyQRCUs?si=8pUvXErVeZFXpILf')
+    videoInfo = await Video.getInfo('https://youtu.be/dQw4w9WgXcQ')
     print(videoInfo)
     
-    videoFormats = await Video.getFormats('z0GKGpObgPY')
+    videoFormats = await Video.getFormats('dQw4w9WgXcQ')
     print(videoFormats)
 
-    suggestions = await Suggestions.get('PyarHumara', language='en', region='US')
+    suggestions = await Suggestions.get('AgarTumSaathHo', language='en', region='US')
     print(suggestions)
 
     hashtag = Hashtag('IndianArmy', limit=1)
@@ -29,7 +29,7 @@ async def main():
     print(singleUrlA)
     print(allUrlsB)
 
-    comments = Comments("_ZdsmLgCVdU")
+    comments = Comments("dQw4w9WgXcQ")
     await asyncio.to_thread(comments.getNextComments)
     while len(comments.comments["result"]) < 100 and getattr(comments, "hasMoreComments", False):
         print(len(comments.comments["result"]))
@@ -39,7 +39,7 @@ async def main():
     transcript_en = await asyncio.to_thread(Transcript.get, "https://youtu.be/89d02K5pIU8?si=z0NtBv6iV1Rc37Mq")
     print(transcript_en)
     
-    url = "https://youtu.be/89d02K5pIU8?si=z0NtBv6iV1Rc37Mq"
+    url = "https://youtu.be/dQw4w9WgXcQ"
     transcript_en = await asyncio.to_thread(Transcript.get, url)
     if transcript_en.get("languages"):
         transcript_2 = await asyncio.to_thread(Transcript.get, url, transcript_en["languages"][-1]["params"])
@@ -56,3 +56,4 @@ async def main():
         print(len(channel.result["playlists"]))
 
 asyncio.run(main())
+
