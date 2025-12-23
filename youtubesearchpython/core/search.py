@@ -1,13 +1,13 @@
 import copy
+import json
 from typing import Union
 from urllib.parse import urlencode
+
 
 from youtubesearchpython.core.requests import RequestCore
 from youtubesearchpython.handlers.componenthandler import ComponentHandler
 from youtubesearchpython.handlers.requesthandler import RequestHandler
 from youtubesearchpython.core.constants import *
-
-import json
 
 
 class SearchCore(RequestCore, RequestHandler, ComponentHandler):
