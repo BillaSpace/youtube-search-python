@@ -8,87 +8,84 @@ from youtubesearchpython.core.requests import RequestCore
 from youtubesearchpython.core.componenthandler import getValue, getVideoId
 
 
+
 class TranscriptCore(RequestCore):
     def __init__(self, videoLink: str, key: str):
         super().__init__()
         self.videoLink = videoLink
         self.key = key
-        self.data = None
-        self.result = None
 
     def prepare_params_request(self):
-        if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
         self.url = 'https://www.youtube.com/youtubei/v1/next' + "?" + urlencode({
             'key': searchKey,
             "prettyPrint": "false"
         })
         self.data = copy.deepcopy(requestPayload)
-        ctx = self.data.setdefault('context', {})
-        client = ctx.setdefault('client', {})
-        client.update({
-            'clientName': client.get('clientName', 'WEB'),
-            'clientVersion': client.get('clientVersion', requestPayload.get('context', {}).get('client', {}).get('clientVersion', '2.20210820.01.00'))
-        })
         self.data["videoId"] = getVideoId(self.videoLink)
 
     def extract_continuation_key(self, r):
-        data = self._safe_load_response(r)
-        panels = getValue(data, ["engagementPanels"]) or []
+        j = r.json()
+        panels = getValue(j, ["engagementPanels"])
         if not panels:
-            self.result = {"segments": [], "languages": []}
-            return True
+            raise Exception("Failed to create first request - No engagementPanels is present.")
         key = ""
         for panel in panels:
-            panel_renderer = getValue(panel, ["engagementPanelSectionListRenderer"]) or {}
-            target = getValue(panel_renderer, ["targetId"])
-            if target == "engagement-panel-searchable-transcript":
-                key = getValue(panel_renderer, ["content", "continuationItemRenderer", "continuationEndpoint", "getTranscriptEndpoint", "params"])
-                break
-        if not key:
+            panel = panel["engagementPanelSectionListRenderer"]
+            if getValue(panel, ["targetId"]) == "engagement-panel-searchable-transcript":
+                key = getValue(panel, ["content", "continuationItemRenderer", "continuationEndpoint", "getTranscriptEndpoint", "params"])
+        if key == "" or not key:
             self.result = {"segments": [], "languages": []}
             return True
         self.key = key
         return False
-
+    
     def prepare_transcript_request(self):
-        if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
         self.url = 'https://www.youtube.com/youtubei/v1/get_transcript' + "?" + urlencode({
             'key': searchKey,
             "prettyPrint": "false"
         })
-        self.data = copy.deepcopy(requestPayload)
-        ctx = self.data.setdefault('context', {})
-        client = ctx.setdefault('client', {})
-        client.update({
-            'clientName': client.get('clientName', 'WEB'),
-            'clientVersion': '2.20220318.00.00'
-        })
-        self.data["params"] = self.key
-
+        
+        self.data = {
+            "context": {
+                "client": {
+                    "clientName": "WEB",
+                    "clientVersion": "2.20210224.06.00",
+                    "newVisitorCookie": True,
+                },
+                "user": {
+                    "lockedSafetyMode": False,
+                }
+            },
+            "params": self.key
+        }
+    
     def extract_transcript(self):
-        data = self._safe_load_response(self.data)
-        transcripts = getValue(data, ["actions", 0, "updateEngagementPanelAction", "content", "transcriptRenderer", "content", "transcriptSearchPanelRenderer", "body", "transcriptSegmentListRenderer", "initialSegments"]) or []
+        response = self.data.json()
+        transcripts = getValue(response, ["actions", 0, "updateEngagementPanelAction", "content", "transcriptRenderer", "content", "transcriptSearchPanelRenderer", "body", "transcriptSegmentListRenderer", "initialSegments"])
         segments = []
         languages = []
+        if not transcripts:
+            # No transcripts available
+            self.result = {"segments": segments, "languages": languages}
+            return
         for segment in transcripts:
-            seg = getValue(segment, ["transcriptSegmentRenderer"]) or {}
+            segment = getValue(segment, ["transcriptSegmentRenderer"])
             j = {
-                "startMs": getValue(seg, ["startMs"]),
-                "endMs": getValue(seg, ["endMs"]),
-                "text": getValue(seg, ["snippet", "runs", 0, "text"]),
-                "startTime": getValue(seg, ["startTimeText", "simpleText"])
+                "startMs": getValue(segment, ["startMs"]),
+                "endMs": getValue(segment, ["endMs"]),
+                "text": getValue(segment, ["snippet", "runs", 0, "text"]),
+                "startTime": getValue(segment, ["startTimeText", "simpleText"])
             }
             segments.append(j)
-        langs = getValue(data, ["actions", 0, "updateEngagementPanelAction", "content", "transcriptRenderer", "content", "transcriptSearchPanelRenderer", "footer", "transcriptFooterRenderer", "languageMenu", "sortFilterSubMenuRenderer", "subMenuItems"]) or []
-        for language in langs:
-            j = {
-                "params": getValue(language, ["continuation", "reloadContinuationData", "continuation"]),
-                "selected": getValue(language, ["selected"]),
-                "title": getValue(language, ["title"])
-            }
-            languages.append(j)
+        langs = getValue(response, ["actions", 0, "updateEngagementPanelAction", "content", "transcriptRenderer", "content", "transcriptSearchPanelRenderer", "footer", "transcriptFooterRenderer", "languageMenu", "sortFilterSubMenuRenderer", "subMenuItems"])
+        if langs:
+            for language in langs:
+                j = {
+                    "params": getValue(language, ["continuation", "reloadContinuationData", "continuation"]),
+                    "selected": getValue(language, ["selected"]),
+                    "title": getValue(language, ["title"])
+                }
+                languages.append(j)
         self.result = {
             "segments": segments,
             "languages": languages
@@ -104,7 +101,7 @@ class TranscriptCore(RequestCore):
         self.prepare_transcript_request()
         self.data = await self.asyncPostRequest()
         self.extract_transcript()
-
+    
     def sync_create(self):
         if not self.key:
             self.prepare_params_request()
