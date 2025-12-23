@@ -6,6 +6,6 @@ from youtubesearchpython.core.constants import *
 
 
 __title__        = 'youtube-search-python'
-__version__      = '2.0+master'
+__version__      = '2.0.0+master'
 __author__       = 'Prakhar'
 __license__      = 'MIT'
