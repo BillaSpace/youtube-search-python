@@ -1,17 +1,16 @@
+import json
 import copy
 from typing import Union
-import json
 from urllib.parse import urlencode
 
+from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.requests import RequestCore
 from youtubesearchpython.handlers.componenthandler import ComponentHandler
-from youtubesearchpython.core.constants import *
 
 
 class ChannelSearchCore(RequestCore, ComponentHandler):
     response = None
     responseSource = None
-    resultComponents = []
 
     def __init__(self, query: str, language: str, region: str, searchPreferences: str, browseId: str, timeout: int):
         super().__init__()
@@ -22,6 +21,7 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         self.searchPreferences = searchPreferences
         self.continuationKey = None
         self.timeout = timeout
+        self.resultComponents = []
 
     def sync_create(self):
         self._syncRequest()
@@ -36,10 +36,23 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
 
     def _parseChannelSearchSource(self) -> None:
         try:
-            tabs = self.response.get("contents", {}).get("twoColumnBrowseResultsRenderer", {}).get("tabs", []) or []
+            contents = self.response.get("contents", {})
+
+            tabs = (
+                contents.get("twoColumnBrowseResultsRenderer", {}).get("tabs")
+                or contents.get("singleColumnBrowseResultsRenderer", {}).get("tabs")
+                or []
+            )
+
             last_tab = tabs[-1] if tabs else {}
-            if 'expandableTabRenderer' in last_tab:
-                self.response = last_tab["expandableTabRenderer"].get("content", {}).get("sectionListRenderer", {}).get("contents", [])
+
+            if "expandableTabRenderer" in last_tab:
+                self.response = (
+                    last_tab["expandableTabRenderer"]
+                    .get("content", {})
+                    .get("sectionListRenderer", {})
+                    .get("contents", [])
+                )
             else:
                 tab_renderer = last_tab.get("tabRenderer", {})
                 content = tab_renderer.get("content")
@@ -48,26 +61,30 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
                 else:
                     self.response = []
         except Exception:
-            raise Exception('ERROR: Could not parse YouTube response.')
+            raise Exception("ERROR: Could not parse YouTube response.")
 
     def _getRequestBody(self):
         requestBody = copy.deepcopy(requestPayload)
-        requestBody['query'] = self.query or ''
-        context = requestBody.setdefault('context', {})
-        client = context.setdefault('client', {})
+        requestBody["query"] = self.query or ""
+
+        context = requestBody.setdefault("context", {})
+        client = context.setdefault("client", {})
         client.update({
-            'hl': self.language or client.get('hl'),
-            'gl': self.region or client.get('gl'),
+            "hl": self.language or client.get("hl"),
+            "gl": self.region or client.get("gl"),
         })
+
         if self.searchPreferences:
-            requestBody['params'] = self.searchPreferences
+            requestBody["params"] = self.searchPreferences
         if self.browseId:
-            requestBody['browseId'] = self.browseId
+            requestBody["browseId"] = self.browseId
         if self.continuationKey:
-            requestBody['continuation'] = self.continuationKey
+            requestBody["continuation"] = self.continuationKey
+
         if not searchKey:
-            raise Exception('INNERTUBE API key (searchKey) is not set.')
-        self.url = 'https://www.youtube.com/youtubei/v1/browse' + '?' + urlencode({'key': searchKey})
+            raise Exception("INNERTUBE API key (searchKey) is not set.")
+
+        self.url = "https://www.youtube.com/youtubei/v1/browse?" + urlencode({"key": searchKey})
         self.data = requestBody
 
     def _syncRequest(self) -> None:
@@ -76,7 +93,7 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         try:
             self.response = request.json() if hasattr(request, "json") else json.loads(request.text)
         except Exception:
-            raise Exception('ERROR: Could not make request.')
+            raise Exception("ERROR: Could not make request.")
 
     async def _asyncRequest(self) -> None:
         self._getRequestBody()
@@ -84,10 +101,10 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         try:
             self.response = request.json() if hasattr(request, "json") else json.loads(request.text)
         except Exception:
-            raise Exception('ERROR: Could not make request.')
+            raise Exception("ERROR: Could not make request.")
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
         if mode == ResultMode.json:
-            return json.dumps({'result': self.response}, indent=4)
+            return json.dumps({"result": self.response}, indent=4)
         elif mode == ResultMode.dict:
-            return {'result': self.response}
+            return {"result": self.response}
