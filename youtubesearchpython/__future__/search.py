@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional
+import asyncio
 
 from youtubesearchpython.core.channelsearch import ChannelSearchCore
 from youtubesearchpython.core.constants import *
@@ -11,7 +12,7 @@ class Search(SearchCore):
         super().__init__(query, limit, language, region, None, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await super().next()
+        return await self._nextAsync()
 
     def create(self) -> None:
         self.sync_create()
@@ -24,7 +25,7 @@ class VideosSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.videos, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await super().next()
+        return await self._nextAsync()
 
     def create(self) -> None:
         self.sync_create()
@@ -37,7 +38,7 @@ class ChannelsSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.channels, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await super().next()
+        return await self._nextAsync()
 
     def create(self) -> None:
         self.sync_create()
@@ -50,7 +51,7 @@ class PlaylistsSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.playlists, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await super().next()
+        return await self._nextAsync()
 
     def create(self) -> None:
         self.sync_create()
@@ -63,7 +64,7 @@ class CustomSearch(SearchCore):
         super().__init__(query, limit, language, region, searchPreferences, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await super().next()
+        return await self._nextAsync()
 
     def create(self) -> None:
         self.sync_create()
@@ -74,8 +75,12 @@ class ChannelSearch(ChannelSearchCore):
     def __init__(self, query: str, browseId: str, language: str = "en", region: str = "US", searchPreferences: str = "EgZzZWFyY2g%3D", timeout: Optional[int] = None):
         super().__init__(query, language, region, searchPreferences, browseId, timeout)
 
+    async def _nextAsync(self) -> Dict[str, Any]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.next)
+
     async def next(self) -> Dict[str, Any]:
-        return await super().next()
+        return await self._nextAsync()
 
     def create(self) -> None:
         self.sync_create()
