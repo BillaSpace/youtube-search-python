@@ -260,7 +260,7 @@ class Video:
                     ]
                 }
         '''
-        vc = VideoCore(videoLink, None, mode, timeout, get_upload_date)
+        vc = VideoCore(videoLink, None, mode, timeout, get_upload_date, "ANDROID")
         if get_upload_date:
             vc.sync_html_create()
         vc.sync_create()
