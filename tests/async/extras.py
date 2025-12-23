@@ -1,5 +1,6 @@
-from youtubesearchpython.__future__ import *
 import asyncio
+from youtubesearchpython.__future__ import *
+
 
 async def main():
     video = await Video.get('https://www.youtube.com/watch?v=z0GKGpObgPY', get_upload_date=True)
@@ -56,3 +57,4 @@ async def main():
 
 
 asyncio.run(main())
+
