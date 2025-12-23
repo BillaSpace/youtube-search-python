@@ -15,7 +15,7 @@ async def main():
     suggestions = await Suggestions.get('AgarTumSaathHo', language='en', region='US')
     print(suggestions)
 
-    hashtag = Hashtag('IndianArmy', limit=1)
+    hashtag = Hashtag('IndianArmy', limit=5)
     result = await asyncio.to_thread(hashtag.result)
     print(result)
 
@@ -23,11 +23,24 @@ async def main():
     
     videoA = await Video.get("https://www.youtube.com/watch?v=aqz-KE-bpKQ")
     videoB = await Video.get("https://www.youtube.com/watch?v=ZwNxYJfW-eU")
-    
-    singleUrlA = await fetcher.get(videoA, 137)
+    videoC = await Video.get("https://youtu.be/dQw4w9WgXcQ")
+    videoD = await Video.get("https://www.youtube.com/watch?v=9bZkp7q19f0")  # Gangnam Style - good public video for streams
+
+    singleUrlA = await fetcher.get(videoA, 251)
     allUrlsB = await fetcher.getAll(videoB)
+    singleUrlC = await fetcher.get(videoC, 251)
+    allUrlsC = await fetcher.getAll(videoC)
+    singleUrlD_251 = await fetcher.get(videoD, 251)
+    singleUrlD_140 = await fetcher.get(videoD, 140)
+    allUrlsD = await fetcher.getAll(videoD)
+
     print(singleUrlA)
     print(allUrlsB)
+    print(singleUrlC)
+    print(allUrlsC)
+    print(singleUrlD_251)
+    print(singleUrlD_140)
+    print(allUrlsD)
 
     comments = Comments("dQw4w9WgXcQ")
     await asyncio.to_thread(comments.getNextComments)
@@ -48,7 +61,7 @@ async def main():
     channel_info = await asyncio.to_thread(Channel.get, "UC_aEa8K-EOJ3d6gOs7HcyNg")
     print(channel_info)
 
-    channel = Channel("UC_aEa8K-EOJ3D6gOs7HcyNg")
+    channel = Channel("UC_aEa8K-EOJ3d6gOs7HcyNg")
     await asyncio.to_thread(channel.init)
     print(len(channel.result["playlists"]))
     while channel.has_more_playlists():
@@ -56,4 +69,3 @@ async def main():
         print(len(channel.result["playlists"]))
 
 asyncio.run(main())
-
