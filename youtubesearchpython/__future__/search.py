@@ -8,10 +8,10 @@ from youtubesearchpython.core.search import SearchCore
 class Search(SearchCore):
     def __init__(self, query: str, limit: int = 20, language: str = "en", region: str = "US", timeout: Optional[int] = None):
         self.searchMode = (True, True, True)
-        super().__init__(query, limit, language, region, None, timeout)  # type: ignore
+        super().__init__(query, limit, language, region, None, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await super().next()
 
     def create(self) -> None:
         self.sync_create()
@@ -24,7 +24,7 @@ class VideosSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.videos, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await super().next()
 
     def create(self) -> None:
         self.sync_create()
@@ -37,7 +37,7 @@ class ChannelsSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.channels, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await super().next()
 
     def create(self) -> None:
         self.sync_create()
@@ -50,7 +50,7 @@ class PlaylistsSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.playlists, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await super().next()
 
     def create(self) -> None:
         self.sync_create()
@@ -63,7 +63,7 @@ class CustomSearch(SearchCore):
         super().__init__(query, limit, language, region, searchPreferences, timeout)
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await super().next()
 
     def create(self) -> None:
         self.sync_create()
@@ -73,6 +73,9 @@ class CustomSearch(SearchCore):
 class ChannelSearch(ChannelSearchCore):
     def __init__(self, query: str, browseId: str, language: str = "en", region: str = "US", searchPreferences: str = "EgZzZWFyY2g%3D", timeout: Optional[int] = None):
         super().__init__(query, language, region, searchPreferences, browseId, timeout)
+
+    async def next(self) -> Dict[str, Any]:
+        return await super().next()
 
     def create(self) -> None:
         self.sync_create()
