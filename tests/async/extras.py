@@ -10,11 +10,11 @@ async def main():
     print(videoFormats)
 
 
-    suggestions = await Suggestions.get('NoCopyrightSounds', language = 'en', region = 'US')
+    suggestions = await Suggestions.get('PyarHumara', language = 'en', region = 'US')
     print(suggestions)
 
 
-    hashtag = Hashtag('ncs', limit = 1)
+    hashtag = Hashtag('raw', limit = 1)
     result = await hashtag.next()
     print(result)
 
@@ -37,19 +37,16 @@ async def main():
     print("Found all comments")
 
     
-    print(await Transcript.get("https://www.youtube.com/watch?v=L7kF4MXXCoA"))
+    print(await Transcript.get("https://youtube.com?v=Um2PmRde4OQ"))
 
 
     url = "https://www.youtube.com/watch?v=-1xu0IP35FI"
-
     transcript_en = await Transcript.get(url)
-    transcript_2 = await Transcript.get(url, transcript_en["languages"][-1]["params"]) # in my case, it'd output Spanish.
+    transcript_2 = await Transcript.get(url, transcript_en["languages"][-1]["params"])
     print(transcript_2)
-
 
     print(await Channel.get("UC_aEa8K-EOJ3D6gOs7HcyNg"))
 
-    # Retrieve playlists of a channel
     channel = Channel("UC_aEa8K-EOJ3D6gOs7HcyNg")
     await channel.init()
     print(len(channel.result["playlists"]))
