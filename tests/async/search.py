@@ -1,8 +1,8 @@
 import asyncio
-from youtubesearchpython.__future__ import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, ChannelSearch, VideoSortOrder
+from youtubesearchpython.__future__ import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, VideoSortOrder
 
 async def main():
-    search = Search('TeraZikr', limit=19, language='en', region='US')
+    search = Search('TeraZikr', limit=5, language='en', region='US')
     result = await search.next()
     print(result)
 
@@ -21,14 +21,6 @@ async def main():
     customSearch = CustomSearch('NoCopyrightSounds', VideoSortOrder.uploadDate, language='en', region='US')
     customResult = await customSearch.next()
     print(customResult)
-
-    search = ChannelSearch('Watermelon Sugar', "UCZFWPqqPkFlNwIxcpsLOwew")
-    result = await search.next()
-    print(result)
-
-    channel = ChannelSearch('The Beatles - Topic', 'UC2XdaAVUannpujzv32jcouQ')
-    result = await channel.next()
-    print(result)
 
     search = VideosSearch('PalPal')
     index = 0
