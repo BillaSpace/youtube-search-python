@@ -1,41 +1,62 @@
 import asyncio
-from youtubesearchpython.__future__ import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, VideoSortOrder
+import json
+import time
+from youtubesearchpython.__future__ import (
+    Search,
+    VideosSearch,
+    ChannelsSearch,
+    PlaylistsSearch,
+    CustomSearch,
+    VideoSortOrder,
+)
+
+def pretty_print(data, elapsed):
+    print(json.dumps(data, indent=2, ensure_ascii=False))
+    print(f"\n⏱ Time taken: {elapsed:.3f} seconds\n{'-'*60}\n")
+
+async def timed_next(obj):
+    start = time.perf_counter()
+    result = await obj.next()
+    elapsed = time.perf_counter() - start
+    return result, elapsed
 
 async def main():
-    search = Search('TeraZikr', limit=5, language='en', region='US')
-    result = await search.next()
-    print(result)
+    search = Search("TeraZikr", limit=5, language="en", region="US")
+    result, t = await timed_next(search)
+    pretty_print(result, t)
 
-    videosSearch = VideosSearch('HumnavaMere', limit=10, language='en', region='US')
-    videosResult = await videosSearch.next()
-    print(videosResult)
+    videosSearch = VideosSearch("HumnavaMere", limit=10, language="en", region="US")
+    result, t = await timed_next(videosSearch)
+    pretty_print(result, t)
 
-    channelsSearch = ChannelsSearch('T-Series', limit=5, language='en', region='US')
-    channelsResult = await channelsSearch.next()
-    print(channelsResult)
+    channelsSearch = ChannelsSearch("T-Series", limit=5, language="en", region="US")
+    result, t = await timed_next(channelsSearch)
+    pretty_print(result, t)
 
-    playlistsSearch = PlaylistsSearch('BollywoodHipHop/TrapRemixes', limit=1, language='en', region='US')
-    playlistsResult = await playlistsSearch.next()
-    print(playlistsResult)
+    playlistsSearch = PlaylistsSearch(
+        "BollywoodHipHop/TrapRemixes", limit=1, language="en", region="US"
+    )
+    result, t = await timed_next(playlistsSearch)
+    pretty_print(result, t)
 
-    customSearch = CustomSearch('TuKaunKahanSe', VideoSortOrder.uploadDate, language='en', region='US')
-    customResult = await customSearch.next()
-    print(customResult)
+    customSearch = CustomSearch(
+        "TuKaunKahanSe",
+        VideoSortOrder.uploadDate,
+        language="en",
+        region="US",
+    )
+    result, t = await timed_next(customSearch)
+    pretty_print(result, t)
 
-    search = VideosSearch('PalPal')
+    search = VideosSearch("PalPal")
     index = 0
-    result = await search.next()
-    for video in result['result']:
-        index += 1
-        print(f'{index} - {video["title"]}')
-    result = await search.next()
-    for video in result['result']:
-        index += 1
-        print(f'{index} - {video["title"]}')
-    result = await search.next()
-    for video in result['result']:
-        index += 1
-        print(f'{index} - {video["title"]}')
+
+    for _ in range(3):
+        result, t = await timed_next(search)
+        print(f"Batch fetched in {t:.3f} seconds")
+        for video in result.get("result", []):
+            index += 1
+            print(f"{index} - {video.get('title')}")
+        print("-" * 60)
 
 asyncio.run(main())
-
