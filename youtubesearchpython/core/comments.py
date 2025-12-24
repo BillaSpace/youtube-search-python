@@ -28,7 +28,7 @@ class CommentsCore(RequestCore):
 
     def prepare_continuation_request(self):
         if not searchKey:
-            raise Exception("searchKey is not set.")
+            raise Exception("searchKey is not set from Library end.")
         self.data = copy.deepcopy(requestPayload)
         ctx = self.data.setdefault("context", {})
         client = ctx.setdefault("client", {})
@@ -39,7 +39,7 @@ class CommentsCore(RequestCore):
 
     def prepare_comments_request(self):
         if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
+            raise Exception("searchKey is not set from linrary end.")
         self.data = copy.deepcopy(requestPayload)
         ctx = self.data.setdefault("context", {})
         client = ctx.setdefault("client", {})
@@ -131,12 +131,21 @@ class CommentsCore(RequestCore):
     def sync_make_continuation_request(self):
         self.prepare_continuation_request()
         self.response = self.syncPostRequest()
-        if hasattr(self.response, "status_code") and self.response.status_code == 200:
-            self.parse_continuation_source()
-            if not self.continuationKey and not self.commentsDisabled:
-                raise Exception("Could not retrieve continuation token")
-        else:
-            raise Exception("Status code is not 200")
+
+        if not hasattr(self.response, "status_code"):
+            raise Exception("Invalid response object (no status_code)")
+
+        if self.response.status_code != 200:
+            raise Exception(f"Comments continuation request failed with status {self.response.status_code}")
+
+        self.parse_continuation_source()
+
+        if not self.continuationKey and not self.commentsDisabled:
+            print(
+                "[CommentsCore] continuation token not found | "
+                f"video={getVideoId(self.videoLink)} | "
+                "reason=missing_token"
+            )
 
     async def async_make_comment_request(self):
         if self.commentsDisabled:
@@ -149,12 +158,21 @@ class CommentsCore(RequestCore):
     async def async_make_continuation_request(self):
         self.prepare_continuation_request()
         self.response = await self.asyncPostRequest()
-        if hasattr(self.response, "status_code") and self.response.status_code == 200:
-            self.parse_continuation_source()
-            if not self.continuationKey and not self.commentsDisabled:
-                raise Exception("Could not retrieve continuation token")
-        else:
-            raise Exception("Status code is not 200")
+
+        if not hasattr(self.response, "status_code"):
+            raise Exception("Invalid response object (no status_code)")
+
+        if self.response.status_code != 200:
+            raise Exception(f"Comments continuation request failed with status {self.response.status_code}")
+
+        self.parse_continuation_source()
+
+        if not self.continuationKey and not self.commentsDisabled:
+            print(
+                "[CommentsCore] continuation token not found | "
+                f"video={getVideoId(self.videoLink)} | "
+                "reason=missing_token"
+            )
 
     def sync_create(self):
         self.sync_make_continuation_request()
