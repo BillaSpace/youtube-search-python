@@ -49,7 +49,7 @@ class TranscriptCore(RequestCore):
             "context": {
                 "client": {
                     "clientName": "WEB",
-                    "clientVersion": "2.20210224.06.00",
+                    "clientVersion": "2.20241210.01.00",
                     "newVisitorCookie": True,
                 },
                 "user": {
@@ -65,7 +65,6 @@ class TranscriptCore(RequestCore):
         segments = []
         languages = []
         if not transcripts:
-            # No transcripts available
             self.result = {"segments": segments, "languages": languages}
             return
         for segment in transcripts:
