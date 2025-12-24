@@ -1,8 +1,7 @@
-import copy
 import json
+import copy
 from typing import Union
 from urllib.parse import urlencode
-
 
 from youtubesearchpython.core.requests import RequestCore
 from youtubesearchpython.handlers.componenthandler import ComponentHandler
@@ -30,27 +29,17 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self._parseSource()
 
     def _getRequestBody(self):
-        requestBody = copy.deepcopy(RequestPayload)
-
-        # place query at top level
-        requestBody['query'] = self.query if self.query is not None else ''
-
-        # put hl/gl into the existing context.client (not as a top-level "client")
-        context = requestBody.setdefault('context', {})
-        client = context.setdefault('client', {})
-        client.update({
-            'hl': self.language or client.get('hl'),
-            'gl': self.region or client.get('gl'),
-        })
-
+        ''' Fixes #47 '''
+        requestBody = copy.deepcopy(requestPayload)
+        requestBody['query'] = self.query
+        requestBody['client'] = {
+            'hl': self.language,
+            'gl': self.region,
+        }
         if self.searchPreferences:
             requestBody['params'] = self.searchPreferences
         if self.continuationKey:
             requestBody['continuation'] = self.continuationKey
-
-        if not searchKey:
-            raise Exception('INNERTUBE API key (searchKey) is not set.')
-
         self.url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({
             'key': searchKey,
         })
@@ -61,7 +50,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         request = self.syncPostRequest()
         try:
             self.response = request.text
-        except Exception:
+        except:
             raise Exception('ERROR: Could not make request.')
 
     async def _makeAsyncRequest(self) -> None:
@@ -69,16 +58,28 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         request = await self.asyncPostRequest()
         try:
             self.response = request.text
-        except Exception:
+        except:
             raise Exception('ERROR: Could not make request.')
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
+        '''Returns the search result.
+        Args:
+            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
+        Returns:
+            Union[str, dict]: Returns JSON or dictionary.
+        '''
         if mode == ResultMode.json:
             return json.dumps({'result': self.resultComponents}, indent=4)
         elif mode == ResultMode.dict:
             return {'result': self.resultComponents}
 
     def _next(self) -> bool:
+        '''Gets the subsequent search result. Call result
+        Args:
+            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
+        Returns:
+            Union[str, dict]: Returns True if getting more results was successful.
+        '''
         if self.continuationKey:
             self.response = None
             self.responseSource = None
@@ -111,13 +112,12 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
             if playlistElementKey in element.keys() and findPlaylists:
                 self.resultComponents.append(self._getPlaylistComponent(element))
             if shelfElementKey in element.keys() and findVideos:
-                shelf = self._getShelfComponent(element)
-                for shelfElement in shelf.get('elements', []):
+                for shelfElement in self._getShelfComponent(element)['elements']:
                     self.resultComponents.append(
-                        self._getVideoComponent(shelfElement, shelfTitle=shelf.get('title'))
-                    )
+                        self._getVideoComponent(shelfElement, shelfTitle=self._getShelfComponent(element)['title']))
             if richItemKey in element.keys() and findVideos:
-                richItemElement = self._getValue(element, [richItemKey, 'content']) or {}
+                richItemElement = self._getValue(element, [richItemKey, 'content'])
+                ''' Initial fallback handling for VideosSearch '''
                 if videoElementKey in richItemElement.keys():
                     videoComponent = self._getVideoComponent(richItemElement)
                     self.resultComponents.append(videoComponent)
