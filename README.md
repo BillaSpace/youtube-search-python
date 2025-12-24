@@ -32,7 +32,7 @@ The original upstream project `alexmercerind/youtube-search-python` is archived 
 - 📱 **ANDROID client default** - Video classes now use ANDROID client by default for better compatibility and direct URL access
 - 🔄 **Stream URL improvements** - Enhanced age-restricted video handling with ANDROID fallback and serverAbrStreamingUrl support
 - 🧹 **URL cleaning** - Automatic URL parameter cleaning for proper video ID extraction
-- 🔢 **Updated client versions** - Bumped ANDROID to 19.02.39 and MWEB to 2.20240425.01.00
+- 🔢 **Updated client versions** - Bumped ANDROID to 19.02.39 and MWEB to 2.20241210.01.00
 - 🐛 **Bug fixes** - Fixed Video ID extraction, Transcript null handling, ChannelSearch parsing, Comments continuation, and Suggestions JSON parsing
 - ⚡ **Async improvements** - Fixed Playlist async initialization and removed conflicting async methods from sync module
 - 🔧 **Error handling** - Improved error messages and fallback mechanisms
