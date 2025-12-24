@@ -1,71 +1,176 @@
 import asyncio
-from youtubesearchpython.__future__ import Video, StreamURLFetcher, Suggestions
+import json
+import time
+
+from youtubesearchpython.__future__ import (
+    Video,
+    StreamURLFetcher,
+    Suggestions,
+)
 from youtubesearchpython import Hashtag, Comments, Transcript, Channel
 
+
+def pretty_print(data, fn_name, elapsed):
+    print(json.dumps(data, indent=2, ensure_ascii=False))
+    print(f"\n⏱ {fn_name} took {elapsed:.3f} seconds\n{'-' * 60}\n")
+
+
+async def timed_call(fn_name, coro):
+    start = time.perf_counter()
+    result = await coro
+    elapsed = time.perf_counter() - start
+    return result, fn_name, elapsed
+
+
+async def timed_thread_call(fn_name, func, *args, **kwargs):
+    start = time.perf_counter()
+    result = await asyncio.to_thread(func, *args, **kwargs)
+    elapsed = time.perf_counter() - start
+    return result, fn_name, elapsed
+
+
 async def main():
-    video = await Video.get('https://youtu.be/dQw4w9WgXcQ', get_upload_date=True)
-    print(video)
-    
-    videoInfo = await Video.getInfo('https://youtu.be/dQw4w9WgXcQ')
-    print(videoInfo)
-    
-    videoFormats = await Video.getFormats('dQw4w9WgXcQ')
-    print(videoFormats)
+    start_all = time.perf_counter()
 
-    suggestions = await Suggestions.get('AgarTumSaathHo', language='en', region='US')
-    print(suggestions)
+    video, fn, t = await timed_call(
+        "Video.get",
+        Video.get("https://youtu.be/dQw4w9WgXcQ", get_upload_date=True),
+    )
+    pretty_print(video, fn, t)
 
-    hashtag = Hashtag('IndianArmy', limit=5)
-    result = await asyncio.to_thread(hashtag.result)
-    print(result)
+    video_info, fn, t = await timed_call(
+        "Video.getInfo",
+        Video.getInfo("https://youtu.be/dQw4w9WgXcQ"),
+    )
+    pretty_print(video_info, fn, t)
+
+    video_formats, fn, t = await timed_call(
+        "Video.getFormats",
+        Video.getFormats("dQw4w9WgXcQ"),
+    )
+    pretty_print(video_formats, fn, t)
+
+    suggestions, fn, t = await timed_call(
+        "Suggestions.get",
+        Suggestions.get("AgarTumSaathHo", language="en", region="US"),
+    )
+    pretty_print(suggestions, fn, t)
+
+    hashtag = Hashtag("IndianArmy", limit=5)
+    hashtag_result, fn, t = await timed_thread_call(
+        "Hashtag.result",
+        hashtag.result,
+    )
+    pretty_print(hashtag_result, fn, t)
 
     fetcher = StreamURLFetcher()
-    
+
     videoA = await Video.get("https://www.youtube.com/watch?v=aqz-KE-bpKQ")
     videoB = await Video.get("https://www.youtube.com/watch?v=ZwNxYJfW-eU")
     videoC = await Video.get("https://youtu.be/dQw4w9WgXcQ")
-    videoD = await Video.get("https://www.youtube.com/watch?v=9bZkp7q19f0")  # Gangnam Style - good public video for streams
+    videoD = await Video.get("https://www.youtube.com/watch?v=9bZkp7q19f0")
 
-    singleUrlA = await fetcher.get(videoA, 251)
-    allUrlsB = await fetcher.getAll(videoB)
-    singleUrlC = await fetcher.get(videoC, 251)
-    allUrlsC = await fetcher.getAll(videoC)
-    singleUrlD_251 = await fetcher.get(videoD, 251)
-    singleUrlD_140 = await fetcher.get(videoD, 140)
-    allUrlsD = await fetcher.getAll(videoD)
+    singleA, fn, t = await timed_call(
+        "StreamURLFetcher.get (251)",
+        fetcher.get(videoA, 251),
+    )
+    pretty_print(singleA, fn, t)
 
-    print(singleUrlA)
-    print(allUrlsB)
-    print(singleUrlC)
-    print(allUrlsC)
-    print(singleUrlD_251)
-    print(singleUrlD_140)
-    print(allUrlsD)
+    allB, fn, t = await timed_call(
+        "StreamURLFetcher.getAll",
+        fetcher.getAll(videoB),
+    )
+    pretty_print(allB, fn, t)
+
+    singleC, fn, t = await timed_call(
+        "StreamURLFetcher.get (251)",
+        fetcher.get(videoC, 251),
+    )
+    pretty_print(singleC, fn, t)
+
+    allC, fn, t = await timed_call(
+        "StreamURLFetcher.getAll",
+        fetcher.getAll(videoC),
+    )
+    pretty_print(allC, fn, t)
+
+    singleD251, fn, t = await timed_call(
+        "StreamURLFetcher.get (251)",
+        fetcher.get(videoD, 251),
+    )
+    pretty_print(singleD251, fn, t)
+
+    singleD140, fn, t = await timed_call(
+        "StreamURLFetcher.get (140)",
+        fetcher.get(videoD, 140),
+    )
+    pretty_print(singleD140, fn, t)
+
+    allD, fn, t = await timed_call(
+        "StreamURLFetcher.getAll",
+        fetcher.getAll(videoD),
+    )
+    pretty_print(allD, fn, t)
 
     comments = Comments("dQw4w9WgXcQ")
-    await asyncio.to_thread(comments.getNextComments)
+
+    _, fn, t = await timed_thread_call(
+        "Comments.getNextComments",
+        comments.getNextComments,
+    )
+    print(f"⏱ {fn} took {t:.3f} seconds\n{'-' * 60}\n")
+
     while len(comments.comments["result"]) < 100 and getattr(comments, "hasMoreComments", False):
-        print(len(comments.comments["result"]))
         await asyncio.to_thread(comments.getNextComments)
-    print("Found all comments")
 
-    transcript_en = await asyncio.to_thread(Transcript.get, "https://youtu.be/89d02K5pIU8?si=z0NtBv6iV1Rc37Mq")
-    print(transcript_en)
-    
+    pretty_print(comments.comments, "Comments (100+)", 0.0)
+
+    transcript, fn, t = await timed_thread_call(
+        "Transcript.get",
+        Transcript.get,
+        "https://youtu.be/89d02K5pIU8?si=z0NtBv6iV1Rc37Mq",
+    )
+    pretty_print(transcript, fn, t)
+
     url = "https://youtu.be/dQw4w9WgXcQ"
-    transcript_en = await asyncio.to_thread(Transcript.get, url)
-    if transcript_en.get("languages"):
-        transcript_2 = await asyncio.to_thread(Transcript.get, url, transcript_en["languages"][-1]["params"])
-        print(transcript_2)
+    transcript_main, fn, t = await timed_thread_call(
+        "Transcript.get (default)",
+        Transcript.get,
+        url,
+    )
+    pretty_print(transcript_main, fn, t)
 
-    channel_info = await asyncio.to_thread(Channel.get, "UC_aEa8K-EOJ3d6gOs7HcyNg")
-    print(channel_info)
+    if transcript_main.get("languages"):
+        transcript_alt, fn, t = await timed_thread_call(
+            "Transcript.get (alt language)",
+            Transcript.get,
+            url,
+            transcript_main["languages"][-1]["params"],
+        )
+        pretty_print(transcript_alt, fn, t)
+
+    channel_info, fn, t = await timed_thread_call(
+        "Channel.get",
+        Channel.get,
+        "UC_aEa8K-EOJ3d6gOs7HcyNg",
+    )
+    pretty_print(channel_info, fn, t)
 
     channel = Channel("UC_aEa8K-EOJ3d6gOs7HcyNg")
-    await asyncio.to_thread(channel.init)
-    print(len(channel.result["playlists"]))
+
+    _, fn, t = await timed_thread_call(
+        "Channel.init",
+        channel.init,
+    )
+    print(f"⏱ {fn} took {t:.3f} seconds")
+    print(f"Playlists: {len(channel.result['playlists'])}\n{'-' * 60}\n")
+
     while channel.has_more_playlists():
         await asyncio.to_thread(channel.next)
-        print(len(channel.result["playlists"]))
+        print(f"Playlists: {len(channel.result['playlists'])}")
+
+    total_time = time.perf_counter() - start_all
+    print(f"\n✅ All tasks completed successfully in {total_time:.3f} seconds")
+
 
 asyncio.run(main())
