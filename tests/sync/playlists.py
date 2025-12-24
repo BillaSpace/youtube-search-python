@@ -63,14 +63,14 @@ async def main():
     print(f"⏱ {fn} took {t:.3f} seconds")
     print(f"Videos Retrieved: {len(playlist_obj.videos)}\n{'-' * 60}\n")
 
-    while playlist_obj.hasMoreVideos():
+    while playlist_obj.hasMoreVideos:
         _, fn, t = await timed_thread_call(
             "Playlist.getNextVideos",
             playlist_obj.getNextVideos,
         )
         print(f"⏱ {fn} took {t:.3f} seconds | Videos Retrieved: {len(playlist_obj.videos)}")
 
-    print("\nFound all the videos.")
+    print("\nFetched all the videos. from the given playlist")
 
     total_time = time.perf_counter() - start_all
     print(f"\n✅ All tasks completed successfully in {total_time:.3f} seconds")
