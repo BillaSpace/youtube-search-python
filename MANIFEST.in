@@ -1,3 +1,2 @@
-# for setup wheels
 include README.md
 recursive-include youtubesearchpython *.py
