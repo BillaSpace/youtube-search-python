@@ -18,6 +18,7 @@ class CommentsCore(RequestCore):
     continuationKey = None
     isNextRequest = False
     response = None
+    commentsDisabled = False
 
     def __init__(self, videoLink: str):
         super().__init__()
@@ -27,12 +28,12 @@ class CommentsCore(RequestCore):
 
     def prepare_continuation_request(self):
         if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
+            raise Exception("searchKey is not set.")
         self.data = copy.deepcopy(requestPayload)
         ctx = self.data.setdefault("context", {})
         client = ctx.setdefault("client", {})
         client.setdefault("clientName", client.get("clientName", "WEB"))
-        client.setdefault("clientVersion", client.get("clientVersion", "2.20210820.01.00"))
+        client.setdefault("clientVersion", client.get("clientVersion", "2.20241210.01.00"))
         self.data["videoId"] = getVideoId(self.videoLink)
         self.url = f"https://www.youtube.com/youtubei/v1/next?{urlencode({'key': searchKey})}"
 
@@ -56,30 +57,72 @@ class CommentsCore(RequestCore):
             "appendContinuationItemsAction" if self.isNextRequest else "reloadContinuationItemsCommand",
             "continuationItems",
         ]
-        self.responseSource = getValue(data, path)
+        self.responseSource = getValue(data, path) or []
 
     def parse_continuation_source(self):
         data = self._safe_load_response(self.response)
-        self.continuationKey = getValue(
-            data,
-            [
-                "contents",
-                "twoColumnWatchNextResults",
-                "results",
-                "results",
-                "contents",
-                -1,
-                "itemSectionRenderer",
-                "contents",
-                0,
-                "continuationItemRenderer",
-                "continuationEndpoint",
-                "continuationCommand",
-                "token",
-            ],
+
+        self.continuationKey = (
+            getValue(
+                data,
+                [
+                    "contents",
+                    "twoColumnWatchNextResults",
+                    "results",
+                    "results",
+                    "contents",
+                    -1,
+                    "itemSectionRenderer",
+                    "contents",
+                    -1,
+                    "continuationItemRenderer",
+                    "continuationEndpoint",
+                    "continuationCommand",
+                    "token",
+                ],
+            )
+            or getValue(
+                data,
+                [
+                    "onResponseReceivedEndpoints",
+                    0,
+                    "reloadContinuationItemsCommand",
+                    "continuationItems",
+                    -1,
+                    "continuationItemRenderer",
+                    "continuationEndpoint",
+                    "continuationCommand",
+                    "token",
+                ],
+            )
         )
 
+        if not self.continuationKey:
+            disabled_msg = getValue(
+                data,
+                [
+                    "contents",
+                    "twoColumnWatchNextResults",
+                    "results",
+                    "results",
+                    "contents",
+                    -1,
+                    "itemSectionRenderer",
+                    "contents",
+                    0,
+                    "messageRenderer",
+                    "text",
+                    "runs",
+                    0,
+                    "text",
+                ],
+            )
+            if disabled_msg:
+                self.commentsDisabled = True
+
     def sync_make_comment_request(self):
+        if self.commentsDisabled:
+            return
         self.prepare_comments_request()
         self.response = self.syncPostRequest()
         if hasattr(self.response, "status_code") and self.response.status_code == 200:
@@ -90,12 +133,14 @@ class CommentsCore(RequestCore):
         self.response = self.syncPostRequest()
         if hasattr(self.response, "status_code") and self.response.status_code == 200:
             self.parse_continuation_source()
-            if not self.continuationKey:
+            if not self.continuationKey and not self.commentsDisabled:
                 raise Exception("Could not retrieve continuation token")
         else:
             raise Exception("Status code is not 200")
 
     async def async_make_comment_request(self):
+        if self.commentsDisabled:
+            return
         self.prepare_comments_request()
         self.response = await self.asyncPostRequest()
         if hasattr(self.response, "status_code") and self.response.status_code == 200:
@@ -106,27 +151,37 @@ class CommentsCore(RequestCore):
         self.response = await self.asyncPostRequest()
         if hasattr(self.response, "status_code") and self.response.status_code == 200:
             self.parse_continuation_source()
-            if not self.continuationKey:
+            if not self.continuationKey and not self.commentsDisabled:
                 raise Exception("Could not retrieve continuation token")
         else:
             raise Exception("Status code is not 200")
 
     def sync_create(self):
         self.sync_make_continuation_request()
+        if self.commentsDisabled:
+            print("Comments are disabled for this video")
+            return
         self.sync_make_comment_request()
         self.__getComponents()
 
     def sync_create_next(self):
+        if self.commentsDisabled:
+            return
         self.isNextRequest = True
         self.sync_make_comment_request()
         self.__getComponents()
 
     async def async_create(self):
         await self.async_make_continuation_request()
+        if self.commentsDisabled:
+            print("Comments are disabled for this video")
+            return
         await self.async_make_comment_request()
         self.__getComponents()
 
     async def async_create_next(self):
+        if self.commentsDisabled:
+            return
         self.isNextRequest = True
         await self.async_make_comment_request()
         self.__getComponents()
@@ -166,6 +221,8 @@ class CommentsCore(RequestCore):
         )
 
     def __result(self, mode: int) -> Union[dict, str]:
+        if self.commentsDisabled:
+            return {"result": "Comments are disabled"}
         if mode == ResultMode.dict:
             return self.commentsComponent
         elif mode == ResultMode.json:
@@ -202,8 +259,6 @@ class CommentsCore(RequestCore):
         key = path[0]
         upcoming = path[1:]
         if key is None:
-            if not upcoming:
-                raise Exception("Invalid path")
             following_key = upcoming[0]
             upcoming = upcoming[1:]
             for val in self.__getAllWithKey(source or [], following_key):
@@ -215,8 +270,7 @@ class CommentsCore(RequestCore):
             yield from self.__getValueEx(val, path=upcoming)
 
     def __getFirstValue(self, source: dict, path: Iterable[Union[str, None]]) -> Union[str, int, dict, None]:
-        values = self.__getValueEx(source or {}, list(path))
-        for val in values:
+        for val in self.__getValueEx(source or {}, list(path)):
             if val is not None:
                 return val
         return None
