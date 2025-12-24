@@ -1,6 +1,6 @@
-from youtubesearchpython.aio.search import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, ChannelSearch
-from youtubesearchpython.aio.extras import Video, Playlist, Suggestions, Hashtag, Comments, Transcript, Channel
-from youtubesearchpython.aio.streamurlfetcher import StreamURLFetcher
+from youtubesearchpython.__future__.search import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, ChannelSearch
+from youtubesearchpython.__future__.extras import Video, Playlist, Suggestions, Hashtag, Comments, Transcript, Channel
+from youtubesearchpython.__future__.streamurlfetcher import StreamURLFetcher
 from youtubesearchpython.core.utils import *
 from youtubesearchpython.core.constants import *
 
