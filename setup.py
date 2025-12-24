@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setuptools.setup(
     name="youtube-search-python",
     version="2.0.0+master",
-    author="Prakhar Shukla",
+    author="Prakhar",
     license='MIT',
     author_email="srvopus@gmail.com",
     description="Modern Search for YouTube content without need of YouTube Data API v3. Maintained fork with modern Python support.",
