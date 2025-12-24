@@ -43,9 +43,6 @@ class PlaylistCore(RequestCore):
             raise Exception('ERROR: Invalid status code.')
 
     async def async_create(self):
-        # Why do I use sync request in a async function, you might ask
-        # Well, there were some problems with httpx.
-        # Until I solve those problems, it is going to stay this way.
         statusCode = await self.__makeAsyncRequest()
         if statusCode == 200:
             self.post_processing()
