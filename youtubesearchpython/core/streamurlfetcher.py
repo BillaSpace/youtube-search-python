@@ -51,7 +51,10 @@ class StreamURLFetcherCore(RequestCore):
             return
 
         streaming_data = videoFormats.get("streamingData")
-        if not streaming_data or not streaming_data.get("formats") and not streaming_data.get("adaptiveFormats"):
+        if not streaming_data:
+            return
+
+        if not streaming_data.get("formats") and not streaming_data.get("adaptiveFormats"):
             return
 
         self._streaming_data = copy.deepcopy(streaming_data)
@@ -76,7 +79,7 @@ class StreamURLFetcherCore(RequestCore):
             return
         self.url = 'https://www.youtube.com/iframe_api'
         res = self.syncGetRequest()
-        if res and res.text:
+        if res and getattr(res, "text", None):
             self.extract_js_url(res.text)
 
     async def getJavaScript(self):
@@ -84,7 +87,7 @@ class StreamURLFetcherCore(RequestCore):
             return
         self.url = 'https://www.youtube.com/iframe_api'
         res = await self.asyncGetRequest()
-        if res and res.text:
+        if res and getattr(res, "text", None):
             self.extract_js_url(res.text)
 
     def _decipher(self, retry: bool = False):
@@ -136,7 +139,7 @@ class StreamURLFetcherCore(RequestCore):
 
                 try:
                     signature = self.ytie._decrypt_signature(encrypted_sig, self.video_id, self._js_url)
-                except:
+                except Exception:
                     continue
 
                 sp = try_get(sc, lambda x: x['sp'][0]) or 'signature'
@@ -150,6 +153,8 @@ class StreamURLFetcherCore(RequestCore):
                         new_n = self.ytie._decrypt_nsig(n_code, self.video_id, self._js_url)
                         fmt_url = update_url_query(fmt_url, {'n': new_n})
                     except ExtractorError:
+                        throttled = True
+                    except Exception:
                         throttled = True
 
                 yt_format["url"] = fmt_url
