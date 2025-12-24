@@ -5,6 +5,7 @@ from youtubesearchpython.core.channelsearch import ChannelSearchCore
 
 class Search(SearchCore):
     '''Searches for videos, channels & playlists in YouTube.
+
     Args:
         query (str): Sets the search query.
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
