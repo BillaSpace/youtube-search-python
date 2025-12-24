@@ -18,7 +18,7 @@ async def main():
     playlistsResult = await playlistsSearch.next()
     print(playlistsResult)
 
-    customSearch = CustomSearch('NoCopyrightSounds', VideoSortOrder.uploadDate, language='en', region='US')
+    customSearch = CustomSearch('TuKaunKahanSe', VideoSortOrder.uploadDate, language='en', region='US')
     customResult = await customSearch.next()
     print(customResult)
 
@@ -38,3 +38,4 @@ async def main():
         print(f'{index} - {video["title"]}')
 
 asyncio.run(main())
+
