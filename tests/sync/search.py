@@ -1,27 +1,27 @@
 from youtubesearchpython import *
 
 
-allSearch = Search('NoCopyrightSounds', limit = 1, language = 'en', region = 'US')
+allSearch = Search('EkdinMeri', limit = 1, language = 'en', region = 'US')
 print(allSearch.result())
 
 
-videosSearch = VideosSearch('NoCopyrightSounds', limit = 10, language = 'en', region = 'US')
+videosSearch = VideosSearch('Mehrbanhua', limit = 5, language = 'en', region = 'US')
 print(videosSearch.result(mode = ResultMode.json))
 
 
-channelsSearch = ChannelsSearch('NoCopyrightSounds', limit = 1, language = 'en', region = 'US')
+channelsSearch = ChannelsSearch('TipsOfficial', limit = 2, language = 'en', region = 'US')
 print(channelsSearch.result(mode = ResultMode.json))
 
 
-playlistsSearch = PlaylistsSearch('NoCopyrightSounds', limit = 1, language = 'en', region = 'US')
+playlistsSearch = PlaylistsSearch('TipsOfficial', limit = 1, language = 'en', region = 'US')
 print(playlistsSearch.result())
 
 
-customSearch = CustomSearch('NoCopyrightSounds', VideoSortOrder.uploadDate, language = 'en', region = 'US')
+customSearch = CustomSearch('hindisongs', VideoSortOrder.uploadDate, language = 'en', region = 'US')
 print(customSearch.result())
 
 
-search = VideosSearch('NoCopyrightSounds')
+search = VideosSearch('Suzume')
 index = 0
 for video in search.result()['result']:
     print(str(index) + ' - ' + video['title'])
@@ -34,7 +34,6 @@ search.next()
 for video in search.result()['result']:
     print(str(index) + ' - ' + video['title'])
     index += 1
-
 
 
 channel = ChannelSearch("Watermelon Sugar", "UCZFWPqqPkFlNwIxcpsLOwew")
