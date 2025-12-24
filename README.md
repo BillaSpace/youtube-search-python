@@ -27,7 +27,7 @@ The original upstream project `alexmercerind/youtube-search-python` is archived 
 
 ---
 
-## What is Fixed or Updated ✳️ ? 
+## What is Fixed ✳️ or Updated ? 
 
 - 📱 **ANDROID client default** - Video classes now use ANDROID client by default for better compatibility and direct URL access
 - 🔄 **Stream URL improvements** - Enhanced age-restricted video handling with ANDROID fallback and serverAbrStreamingUrl support
