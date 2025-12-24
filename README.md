@@ -1496,5 +1496,8 @@ Thanks to everyone contributing to this library, including those not mentioned h
 
 - For example outputs, prefer running test suites under `tests/sync` and `tests/async` to generate fresh results for your environment.
 - If something breaks due to YouTube changes, open an issue with a reproducible snippet and logs.
+- if using stream url fetcher features must provide cookies.txt in netscape format to avoid authorisation errors
+- You can get cookies.txt by  chrome or firefox extensions ( search in youtube app for more information ℹ️)
+- I strictly recommend to locally clone this repo under your project if you have a will to use for the streamurl fetcher functionality otherwise edit your requirements.txt
 
 ---
