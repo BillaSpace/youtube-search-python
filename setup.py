@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="youtube-search-python",
-    version="1.6.9+master",
+    version="2.0.0+master",
     author="Prakhar Shukla",
     license='MIT',
     author_email="srvopus@gmail.com",
@@ -17,7 +17,7 @@ setuptools.setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'httpx>=0.28.1'  # compatible with httpx 0.28+
+        'httpx>=0.28.1'  # now compatible with httpx 0.28+
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
