@@ -19,7 +19,7 @@ CLIENTS = {
         'context': {
             'client': {
                 'clientName': 'WEB',
-                'clientVersion': '2.20210224.06.00',
+                'clientVersion': '2.20240502.07.00',
                 'newVisitorCookie': True
             },
             'user': {
