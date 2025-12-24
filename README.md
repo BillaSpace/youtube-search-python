@@ -21,9 +21,11 @@
 
 ## About
 
-This project is a **revamped** version of the original `youtube-search-python` library that helps you search YouTube and fetch video/channel/playlist metadata **without** using YouTube Data API v3. [web:2]
+This project is a **revamped** version of the original `youtube-search-python` library that helps you search YouTube ( async / sync ) and fetch video/channel/playlist metadata **without** using YouTube Data API v3.
 
-The original upstream project `alexmercerind/youtube-search-python` is archived and read-only. [page:0]
+The original upstream project `alexmercerind/youtube-search-python` is archived and read-only.
+
+Must Fork this repository ,Leave a star ⭐ & share it to your friends this will keep it actively maintained & provides some energy to us to continue enhancements
 
 ---
 
