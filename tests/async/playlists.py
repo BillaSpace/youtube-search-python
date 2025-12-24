@@ -3,29 +3,46 @@ import json
 import time
 from youtubesearchpython.__future__ import *
 
+TIMEOUT = 60
+
 def print_json(data):
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
 async def run_get(url):
     start = time.perf_counter()
-    result = await Playlist.get(url)
-    elapsed = time.perf_counter() - start
-    print_json(result)
-    print(f"\n⏱ Playlist.get took {elapsed:.3f} seconds\n{'-'*60}\n")
+    try:
+        result = await Playlist.get(url, timeout=TIMEOUT)
+        elapsed = time.perf_counter() - start
+        print_json(result)
+        print(f"\n⏱ Playlist.get took {elapsed:.3f} seconds\n{'-'*60}\n")
+    except Exception as e:
+        elapsed = time.perf_counter() - start
+        print_json({"error": type(e).__name__, "message": str(e)})
+        print(f"\n⏱ Playlist.get failed after {elapsed:.3f} seconds\n{'-'*60}\n")
 
 async def run_get_info(url):
     start = time.perf_counter()
-    result = await Playlist.getInfo(url)
-    elapsed = time.perf_counter() - start
-    print_json(result)
-    print(f"\n⏱ Playlist.getInfo took {elapsed:.3f} seconds\n{'-'*60}\n")
+    try:
+        result = await Playlist.getInfo(url, timeout=TIMEOUT)
+        elapsed = time.perf_counter() - start
+        print_json(result)
+        print(f"\n⏱ Playlist.getInfo took {elapsed:.3f} seconds\n{'-'*60}\n")
+    except Exception as e:
+        elapsed = time.perf_counter() - start
+        print_json({"error": type(e).__name__, "message": str(e)})
+        print(f"\n⏱ Playlist.getInfo failed after {elapsed:.3f} seconds\n{'-'*60}\n")
 
 async def run_get_videos(url):
     start = time.perf_counter()
-    result = await Playlist.getVideos(url)
-    elapsed = time.perf_counter() - start
-    print_json(result)
-    print(f"\n⏱ Playlist.getVideos took {elapsed:.3f} seconds\n{'-'*60}\n")
+    try:
+        result = await Playlist.getVideos(url, timeout=TIMEOUT)
+        elapsed = time.perf_counter() - start
+        print_json(result)
+        print(f"\n⏱ Playlist.getVideos took {elapsed:.3f} seconds\n{'-'*60}\n")
+    except Exception as e:
+        elapsed = time.perf_counter() - start
+        print_json({"error": type(e).__name__, "message": str(e)})
+        print(f"\n⏱ Playlist.getVideos failed after {elapsed:.3f} seconds\n{'-'*60}\n")
 
 async def main():
     url1 = "https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK"
