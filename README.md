@@ -6,7 +6,7 @@
   <img src="https://files.catbox.moe/rbt2je.jpg" alt="youtube-search-python" style="border-radius: 18px; max-width: 100%; height: auto;" />
 </p>
 
-<h1 align="center">youtube-search-python v2.0 (Revamped)</h1>
+<h1 align="center">youtube-search-python v2.0 [ Revamped ]</h1>
 
 <p align="center">
   A revived and improved fork of <code>youtube-search-python</code> focused on better reliability, compatibility, and maintained fixes.
