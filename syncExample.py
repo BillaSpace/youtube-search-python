@@ -2,7 +2,6 @@ from youtubesearchpython import *
 
 
 
-
 '''
 Searches for all types of results like videos, channels & playlists in YouTube.
 'type' key in the JSON/Dictionary may be used to differentiate between the types of result.
