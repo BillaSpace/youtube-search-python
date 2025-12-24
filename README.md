@@ -6,6 +6,12 @@
   <img src="https://files.catbox.moe/rbt2je.jpg" alt="youtube-search-python" style="border-radius: 18px; max-width: 100%; height: auto;" />
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/github/stars/BillaSpace/youtube-search-python?style=for-the-badge" />
+  <img src="https://img.shields.io/github/forks/BillaSpace/youtube-search-python?style=for-the-badge" />
+  <img src="https://img.shields.io/github/watchers/BillaSpace/youtube-search-python?style=for-the-badge" />
+</p>
+
 <h1 align="center">youtube-search-python v2.0 [Revamped]</h1>
 
 <p align="center">
@@ -21,13 +27,13 @@
 
 ## About
 
-This project is a **revamped** version of the original `youtube-search-python` library that helps you search YouTube ( async / sync ) and fetch video/channel/playlist metadata **without** using YouTube Data API v3.
+This project is a **revamped** version of the original `youtube-search-python` library that lets you search YouTube (sync / async) and fetch video, channel, and playlist metadata **without** using YouTube Data API v3.
 
 The original upstream project `alexmercerind/youtube-search-python` is archived and read-only.
 
-Must Fork this repository ,Leave a star ⭐ & share it to your friends this will keep it actively maintained & provides some energy to us to continue enhancements
-
----
+⭐ Star the repo • 🍴 Fork it • 📢 Share it  
+If real usage is observed, this revamped project will be officially released on **PyPI** as: 
+```yt-search-python```
 
 ## What is Fixed ✳️ or Updated ? 
 
@@ -52,7 +58,11 @@ Must Fork this repository ,Leave a star ⭐ & share it to your friends this will
 ### locally clone this repository under your project
 ``` git clone https://github.com/BillaSpace/youtube-search-python```
 
-### Using pip ( old version )
+### Using pip [ Revamped Version ]
+### don't use this for now as I'll release pypi v. later there
+```yt-search-python```
+
+### Using pip [ old version ]
 ```pip install youtube-search-python```
 
 This installs the published PyPI package name. [web:2]
@@ -1221,6 +1231,7 @@ print(comments)
             ]
          }
 ```
+
 </details>
 
 #### Retrieve video transcript
@@ -1228,19 +1239,20 @@ YouTube auto-generates transcripts (subtitles) for videos. You can retrieve thos
 ```py
 from youtubesearchpython import Transcript
 
-print(Transcript.get("https://www.youtube.com/watch?v=-1xu0IP35FI"))```
+print(Transcript.get("https://www.youtube.com/watch?v=-1xu0IP35FI"))
+```
 
-# In response, you'll get available languages with `params` parameter. If you want to retrieve a different language, you have to pass the function that parameter. Example:
+In response, you'll get available languages with `params` parameter. If you want to retrieve a different language, you have to pass the function that parameter. Example:
 ```py
 from youtubesearchpython import Transcript
 
 url = "https://www.youtube.com/watch?v=-1xu0IP35FI"
 
 transcript_en = Transcript.get(url)
-```
 # you actually don't have to pass a valid URL in following Transcript call. You can input an empty string, but I do recommend still inputing a valid URL.
 transcript_2 = Transcript.get(url, transcript_en["languages"][-1]["params"]) # in my case, it'd output Spanish.
 print(transcript_2)
+```
 
 <details>
  <summary> Example Result</summary>
@@ -1458,9 +1470,9 @@ while channel.has_more_playlists():
 ## Upstream Reference
 
 The original (archived) project:  
-https://github.com/alexmercerind/youtube-search-python [page:0]
+https://github.com/alexmercerind/youtube-search-python
 
-It is archived and read-only. [page:0]
+It is now archived since 1 july 2k22 and read-only.
 
 ---
 
