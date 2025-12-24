@@ -1,6 +1,8 @@
+from typing import Any, Dict, Optional
+
+from youtubesearchpython.core.channelsearch import ChannelSearchCore
 from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.search import SearchCore
-from youtubesearchpython.core.channelsearch import ChannelSearchCore
 
 
 class Search(SearchCore):
@@ -16,7 +18,8 @@ class Search(SearchCore):
         Calling `result` method gives the search result.
 
         >>> search = Search('Watermelon Sugar', limit = 1)
-        >>> print(search.result())
+        >>> result = await search.next()
+        >>> print(result)
         {
             "result": [
                 {
@@ -68,14 +71,13 @@ class Search(SearchCore):
             ]
         }
     '''
-    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: int = None):
+    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: Optional[int] = None):
         self.searchMode = (True, True, True)
-        super().__init__(query, limit, language, region, None, timeout)
-        self.sync_create()
-        self._getComponents(*self.searchMode)
+        super().__init__(query, limit, language, region, None, timeout)  # type: ignore
 
-    def next(self) -> bool:
-        return self._next()
+    async def next(self) -> Dict[str, Any]:
+        return await self._nextAsync()
+
 
 class VideosSearch(SearchCore):
     '''Searches for videos in YouTube.
@@ -90,7 +92,8 @@ class VideosSearch(SearchCore):
         Calling `result` method gives the search result.
 
         >>> search = VideosSearch('Watermelon Sugar', limit = 1)
-        >>> print(search.result())
+        >>> result = await search.next()
+        >>> print(result)
         {
             "result": [
                 {
@@ -142,14 +145,12 @@ class VideosSearch(SearchCore):
             ]
         }
     '''
-    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: int = None):
+    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: Optional[int] = None):
         self.searchMode = (True, False, False)
-        super().__init__(query, limit, language, region, SearchMode.videos, timeout)
-        self.sync_create()
-        self._getComponents(*self.searchMode)
+        super().__init__(query, limit, language, region, SearchMode.videos, timeout)  # type: ignore
 
-    def next(self) -> bool:
-        return self._next()
+    async def next(self) -> Dict[str, Any]:
+        return await self._nextAsync()
 
 
 class ChannelsSearch(SearchCore):
@@ -165,7 +166,8 @@ class ChannelsSearch(SearchCore):
         Calling `result` method gives the search result.
 
         >>> search = ChannelsSearch('Harry Styles', limit = 1)
-        >>> print(search.result())
+        >>> result = await search.next()
+        >>> print(result)
         {
             "result": [
                 {
@@ -192,14 +194,12 @@ class ChannelsSearch(SearchCore):
             ]
         }
     '''
-    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: int = None):
+    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: Optional[int] = None):
         self.searchMode = (False, True, False)
-        super().__init__(query, limit, language, region, SearchMode.channels, timeout)
-        self.sync_create()
-        self._getComponents(*self.searchMode)
+        super().__init__(query, limit, language, region, SearchMode.channels, timeout)  # type: ignore
 
-    def next(self) -> bool:
-        return self._next()
+    async def next(self) -> Dict[str, Any]:
+        return await self._nextAsync()
 
 
 class PlaylistsSearch(SearchCore):
@@ -215,7 +215,8 @@ class PlaylistsSearch(SearchCore):
         Calling `result` method gives the search result.
 
         >>> search = PlaylistsSearch('Harry Styles', limit = 1)
-        >>> print(search.result())
+        >>> result = await search.next()
+        >>> print(result)
         {
             "result": [
                 {
@@ -255,15 +256,96 @@ class PlaylistsSearch(SearchCore):
             ]
         }
     '''
-    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: int = None):
+    def __init__(self, query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: Optional[int] = None):
         self.searchMode = (False, False, True)
-        super().__init__(query, limit, language, region, SearchMode.playlists, timeout)
-        self.sync_create()
-        self._getComponents(*self.searchMode)
+        super().__init__(query, limit, language, region, SearchMode.playlists, timeout)  # type: ignore
 
-    def next(self) -> bool:
-        return self._next()
+    async def next(self) -> Dict[str, Any]:
+        return await self._nextAsync()
 
+class CustomSearch(SearchCore):
+    '''Performs custom search in YouTube with search filters or sorting orders. 
+    Few of the predefined filters and sorting orders are:
+
+        1 - SearchMode.videos
+        2 - VideoUploadDateFilter.lastHour
+        3 - VideoDurationFilter.long
+        4 - VideoSortOrder.viewCount
+
+    There are many other to use.
+    The value of `sp` parameter in the YouTube search query can be used as a search filter e.g. 
+    `EgQIBRAB` from https://www.youtube.com/results?search_query=NoCopyrightSounds&sp=EgQIBRAB can be passed as `searchPreferences`, to get videos, which are uploaded this year.
+
+    Args:
+        query (str): Sets the search query.
+        searchPreferences (str): Sets the `sp` query parameter in the YouTube search request.
+        limit (int, optional): Sets limit to the number of results. Defaults to 20.
+        language (str, optional): Sets the result language. Defaults to 'en'.
+        region (str, optional): Sets the result region. Defaults to 'US'.
+    
+    Examples:
+        Calling `result` method gives the search result.
+
+        >>> search = CustomSearch('Harry Styles', VideoSortOrder.viewCount, limit = 1)
+        >>> result = await search.next()
+        >>> print(result)
+        {
+            "result": [
+                {
+                    "type": "video",
+                    "id": "QJO3ROT-A4E",
+                    "title": "One Direction - What Makes You Beautiful (Official Video)",
+                    "publishedTime": "9 years ago",
+                    "duration": "3:27",
+                    "viewCount": {
+                        "text": "1,212,146,802 views",
+                        "short": "1.2B views"
+                    },
+                    "thumbnails": [
+                        {
+                            "url": "https://i.ytimg.com/vi/QJO3ROT-A4E/hq720.jpg?sqp=-oaymwEjCOgCEMoBSFryq4qpAxUIARUAAAAAGAElAADIQj0AgKJDeAE=&rs=AOn4CLDeFKrH99gmpnvKyG4czdd__YRDkw",
+                            "width": 360,
+                            "height": 202
+                        },
+                        {
+                            "url": "https://i.ytimg.com/vi/QJO3ROT-A4E/hq720.jpg?sqp=-oaymwEXCNAFEJQDSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLBJ_wUjsRFXGsbvRpwYpSLlsGmbkw",
+                            "width": 720,
+                            "height": 404
+                        }
+                    ],
+                    "descriptionSnippet": [
+                        {
+                            "text": "One Direction \u2013 What Makes You Beautiful (Official Video) Follow on Spotify - https://1D.lnk.to/Spotify Listen on Apple Music\u00a0..."
+                        }
+                    ],
+                    "channel": {
+                        "name": "One Direction",
+                        "id": "UCb2HGwORFBo94DmRx4oLzow",
+                        "thumbnails": [
+                            {
+                                "url": "https://yt3.ggpht.com/a-/AOh14Gj3SMvtIAvVNUrHWFTJFubPN7qozzPl5gFkoA=s68-c-k-c0x00ffffff-no-rj-mo",
+                                "width": 68,
+                                "height": 68
+                            }
+                        ],
+                        "link": "https://www.youtube.com/channel/UCb2HGwORFBo94DmRx4oLzow"
+                    },
+                    "accessibility": {
+                        "title": "One Direction - What Makes You Beautiful (Official Video) by One Direction 9 years ago 3 minutes, 27 seconds 1,212,146,802 views",
+                        "duration": "3 minutes, 27 seconds"
+                    },
+                    "link": "https://www.youtube.com/watch?v=QJO3ROT-A4E",
+                    "shelfTitle": null
+                }
+            ]
+        }
+    '''
+    def __init__(self, query: str, searchPreferences: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: Optional[int] = None):
+        self.searchMode = (True, True, True)
+        super().__init__(query, limit, language, region, searchPreferences, timeout)  # type: ignore
+
+    async def next(self) -> Dict[str, Any]:
+        return await self._nextAsync() 
 
 class ChannelSearch(ChannelSearchCore):
     '''Searches for videos in specific channel in YouTube.
@@ -278,7 +360,8 @@ class ChannelSearch(ChannelSearchCore):
         Calling `result` method gives the search result.
 
         >>> search = ChannelSearch('Watermelon Sugar', "UCZFWPqqPkFlNwIxcpsLOwew")
-        >>> print(search.result())
+        >>> result = await search.next()
+        >>> print(result)
         {
             "result": [
                 {
@@ -337,92 +420,5 @@ class ChannelSearch(ChannelSearchCore):
         }
     '''
 
-    def __init__(self, query: str, browseId: str, language: str = 'en', region: str = 'US', searchPreferences: str = "EgZzZWFyY2g%3D", timeout: int = None):
+    def __init__(self, query: str, browseId: str, language: str = 'en', region: str = 'US', searchPreferences: str = "EgZzZWFyY2g%3D", timeout: Optional[int] = None):
         super().__init__(query, language, region, searchPreferences, browseId, timeout)
-        self.sync_create()
-
-
-class CustomSearch(SearchCore):
-    '''Performs custom search in YouTube with search filters or sorting orders. 
-    Few of the predefined filters and sorting orders are:
-
-        1 - SearchMode.videos
-        2 - VideoUploadDateFilter.lastHour
-        3 - VideoDurationFilter.long
-        4 - VideoSortOrder.viewCount
-
-    There are many other to use.
-    The value of `sp` parameter in the YouTube search query can be used as a search filter e.g. 
-    `EgQIBRAB` from https://www.youtube.com/results?search_query=NoCopyrightSounds&sp=EgQIBRAB can be passed as `searchPreferences`, to get videos, which are uploaded this year.
-
-    Args:
-        query (str): Sets the search query.
-        searchPreferences (str): Sets the `sp` query parameter in the YouTube search request.
-        limit (int, optional): Sets limit to the number of results. Defaults to 20.
-        language (str, optional): Sets the result language. Defaults to 'en'.
-        region (str, optional): Sets the result region. Defaults to 'US'.
-    
-    Examples:
-        Calling `result` method gives the search result.
-
-        >>> search = CustomSearch('Harry Styles', VideoSortOrder.viewCount, limit = 1)
-        >>> print(search.result())
-        {
-            "result": [
-                {
-                    "type": "video",
-                    "id": "QJO3ROT-A4E",
-                    "title": "One Direction - What Makes You Beautiful (Official Video)",
-                    "publishedTime": "9 years ago",
-                    "duration": "3:27",
-                    "viewCount": {
-                        "text": "1,212,146,802 views",
-                        "short": "1.2B views"
-                    },
-                    "thumbnails": [
-                        {
-                            "url": "https://i.ytimg.com/vi/QJO3ROT-A4E/hq720.jpg?sqp=-oaymwEjCOgCEMoBSFryq4qpAxUIARUAAAAAGAElAADIQj0AgKJDeAE=&rs=AOn4CLDeFKrH99gmpnvKyG4czdd__YRDkw",
-                            "width": 360,
-                            "height": 202
-                        },
-                        {
-                            "url": "https://i.ytimg.com/vi/QJO3ROT-A4E/hq720.jpg?sqp=-oaymwEXCNAFEJQDSFryq4qpAwkIARUAAIhCGAE=&rs=AOn4CLBJ_wUjsRFXGsbvRpwYpSLlsGmbkw",
-                            "width": 720,
-                            "height": 404
-                        }
-                    ],
-                    "descriptionSnippet": [
-                        {
-                            "text": "One Direction \u2013 What Makes You Beautiful (Official Video) Follow on Spotify - https://1D.lnk.to/Spotify Listen on Apple Music\u00a0..."
-                        }
-                    ],
-                    "channel": {
-                        "name": "One Direction",
-                        "id": "UCb2HGwORFBo94DmRx4oLzow",
-                        "thumbnails": [
-                            {
-                                "url": "https://yt3.ggpht.com/a-/AOh14Gj3SMvtIAvVNUrHWFTJFubPN7qozzPl5gFkoA=s68-c-k-c0x00ffffff-no-rj-mo",
-                                "width": 68,
-                                "height": 68
-                            }
-                        ],
-                        "link": "https://www.youtube.com/channel/UCb2HGwORFBo94DmRx4oLzow"
-                    },
-                    "accessibility": {
-                        "title": "One Direction - What Makes You Beautiful (Official Video) by One Direction 9 years ago 3 minutes, 27 seconds 1,212,146,802 views",
-                        "duration": "3 minutes, 27 seconds"
-                    },
-                    "link": "https://www.youtube.com/watch?v=QJO3ROT-A4E",
-                    "shelfTitle": null
-                }
-            ]
-        }
-    '''
-    def __init__(self, query: str, searchPreferences: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: int = None):
-        self.searchMode = (True, True, True)
-        super().__init__(query, limit, language, region, searchPreferences, timeout)
-        self.sync_create()
-        self._getComponents(*self.searchMode)
-    
-    def next(self):
-        self._next()
