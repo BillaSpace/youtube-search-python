@@ -56,14 +56,14 @@ async def main():
 
     playlist_obj = Playlist(url_playlist)
 
-    _, fn, t = await timed_thread_call(
+    _, fn, t = await timed_call(
         "Playlist.init",
-        playlist_obj.init,
+        playlist_obj.init(),
     )
     print(f"⏱ {fn} took {t:.3f} seconds")
     print(f"Videos Retrieved: {len(playlist_obj.videos)}\n{'-' * 60}\n")
 
-    while playlist_obj.has_more_videos():
+    while playlist_obj.hasMoreVideos():
         _, fn, t = await timed_thread_call(
             "Playlist.getNextVideos",
             playlist_obj.getNextVideos,
