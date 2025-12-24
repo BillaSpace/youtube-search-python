@@ -1,4 +1,3 @@
-import os
 import copy
 import json
 from typing import Union, List
@@ -20,7 +19,7 @@ CLIENTS = {
         'context': {
             'client': {
                 'clientName': 'WEB',
-                'clientVersion': '2.20241210.01.00',
+                'clientVersion': '2.20210224.06.00',
                 'newVisitorCookie': True
             },
             'user': {
@@ -59,6 +58,10 @@ CLIENTS = {
 
 
 def _get_cleaned_url(video_link: str) -> str:
+    """
+    Cleans the YouTube video link by removing any extra parameters,
+    ensuring only the video ID is present.
+    """
     parsed_url = urlparse(video_link)
     video_id = parse_qs(parsed_url.query).get("v")
     if video_id:
@@ -75,18 +78,8 @@ class VideoCore(RequestCore):
         self.videoLink = _get_cleaned_url(videoLink)
         self.enableHTML = enableHTML
         self.overridedClient = overridedClient
-        
-        proxy = os.environ.get("YTS_PROXY") or os.environ.get("HTTP_PROXY") or os.environ.get("HTTPS_PROXY")
-        if proxy:
-            self.proxies = {"http": proxy, "https": proxy}
-
-    def _apply_token_and_headers(self):
-        token = os.environ.get("YTS_IDENTITY_TOKEN")
-        if token:
-            if not hasattr(self, "headers") or self.headers is None:
-                self.headers = {}
-            self.headers["x-youtube-identity-token"] = token
-
+    
+    # We call this when we use only HTML
     def post_request_only_html_processing(self):
         self.__getVideoComponent(self.componentMode)
         self.result = self.__videoComponent
@@ -104,7 +97,6 @@ class VideoCore(RequestCore):
             "videoId": getVideoId(self.videoLink)
         })
         self.data = copy.deepcopy(CLIENTS[self.overridedClient])
-        self._apply_token_and_headers()
 
     async def async_create(self):
         self.prepare_innertube_request()
@@ -131,6 +123,7 @@ class VideoCore(RequestCore):
             self.post_request_processing()
         else:
             try:
+                # Get full error response for debugging
                 error_msg = response.text if hasattr(response, 'text') and response.text else 'No response text available'
                 try:
                     import json
@@ -157,7 +150,6 @@ class VideoCore(RequestCore):
             "videoId": getVideoId(self.videoLink)
         })
         self.data = CLIENTS["MWEB"]
-        self._apply_token_and_headers()
 
     def sync_html_create(self):
         self.prepare_html_request()
