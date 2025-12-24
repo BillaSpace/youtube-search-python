@@ -1,5 +1,6 @@
-from youtubesearchpython.__future__ import *
 import asyncio
+from youtubesearchpython.__future__ import *
+
 
 async def main():
     '''
@@ -9,8 +10,6 @@ async def main():
     search = Search('NoCopyrightSounds', limit = 1, language = 'en', region = 'US')
     result = await search.next()
     print(result)
-
-
 
 
     '''
