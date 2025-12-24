@@ -44,7 +44,7 @@ class HashtagCore(ComponentHandler):
 
     def _getParams(self) -> None:
         if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
+            raise Exception("(searchKey) is not set in library.")
         requestBody = copy.deepcopy(requestPayload)
         requestBody['query'] = "#" + (self.hashtag or "")
         ctx = requestBody.setdefault('context', {})
