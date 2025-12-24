@@ -3,56 +3,28 @@ import json
 import time
 from youtubesearchpython.__future__ import *
 
-TIMEOUT = 60
-
 def print_json(data):
     print(json.dumps(data, indent=2, ensure_ascii=False))
 
-async def run_get(url):
-    start = time.perf_counter()
-    try:
-        result = await Playlist.get(url, timeout=TIMEOUT)
-        elapsed = time.perf_counter() - start
-        print_json(result)
-        print(f"\n⏱ Playlist.get took {elapsed:.3f} seconds\n{'-'*60}\n")
-    except Exception as e:
-        elapsed = time.perf_counter() - start
-        print_json({"error": type(e).__name__, "message": str(e)})
-        print(f"\n⏱ Playlist.get failed after {elapsed:.3f} seconds\n{'-'*60}\n")
+def print_timing(fn_name, elapsed):
+    print(f"⏱ {fn_name}: {elapsed:.3f}s")
+    print("-" * 60)
 
-async def run_get_info(url):
+async def timed(fn_name, coro):
     start = time.perf_counter()
-    try:
-        result = await Playlist.getInfo(url, timeout=TIMEOUT)
-        elapsed = time.perf_counter() - start
-        print_json(result)
-        print(f"\n⏱ Playlist.getInfo took {elapsed:.3f} seconds\n{'-'*60}\n")
-    except Exception as e:
-        elapsed = time.perf_counter() - start
-        print_json({"error": type(e).__name__, "message": str(e)})
-        print(f"\n⏱ Playlist.getInfo failed after {elapsed:.3f} seconds\n{'-'*60}\n")
-
-async def run_get_videos(url):
-    start = time.perf_counter()
-    try:
-        result = await Playlist.getVideos(url, timeout=TIMEOUT)
-        elapsed = time.perf_counter() - start
-        print_json(result)
-        print(f"\n⏱ Playlist.getVideos took {elapsed:.3f} seconds\n{'-'*60}\n")
-    except Exception as e:
-        elapsed = time.perf_counter() - start
-        print_json({"error": type(e).__name__, "message": str(e)})
-        print(f"\n⏱ Playlist.getVideos failed after {elapsed:.3f} seconds\n{'-'*60}\n")
+    result = await coro
+    elapsed = time.perf_counter() - start
+    print_timing(fn_name, elapsed)
+    return result
 
 async def main():
     url1 = "https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK"
     url2 = "https://www.youtube.com/watch?v=bplUXwTTgbI&list=PL6edxAMqu2xfxgbf7Q09hSg1qCMfDI7IZ"
 
-    await run_get(url1)
-    await run_get_info(url1)
-    await run_get_videos(url1)
-
-    await run_get(url1)
-    await run_get(url2)
+    print_json(await timed("Playlist.get", Playlist.get(url1)))
+    print_json(await timed("Playlist.getInfo", Playlist.getInfo(url1)))
+    print_json(await timed("Playlist.getVideos", Playlist.getVideos(url1)))
+    print_json(await timed("Playlist.get (cached)", Playlist.get(url1)))
+    print_json(await timed("Playlist.get (video+playlist URL)", Playlist.get(url2)))
 
 asyncio.run(main())
