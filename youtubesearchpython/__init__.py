@@ -1,6 +1,6 @@
 """
 youtube-search-python v2 (updated & enhanced)
-This is a maintained fork by Prakhar / Rajnish Mishra with compatibility fixes for httpx>=0.28.1+.
+This is a maintained fork by Prakhar shukla / Rajnish Mishra with compatibility fixes for httpx>=0.28.1+.
 Original project by Hitesh Kumar Saini (alexmercerind).
 """
 
