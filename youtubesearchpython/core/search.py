@@ -30,7 +30,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
         self._parseSource()
 
     def _getRequestBody(self):
-        requestBody = copy.deepcopy(requestPayload)
+        requestBody = copy.deepcopy(RequestPayload)
 
         # place query at top level
         requestBody['query'] = self.query if self.query is not None else ''
