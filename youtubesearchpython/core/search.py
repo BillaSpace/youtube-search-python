@@ -30,7 +30,7 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
 
     def _getRequestBody(self):
         ''' Fixes #47 '''
-        requestBody = copy.deepcopy(requestPayload)
+        requestBody = copy.deepcopy(RequestPayload)
         requestBody['query'] = self.query
         requestBody['client'] = {
             'hl': self.language,
