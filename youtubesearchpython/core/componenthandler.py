@@ -1,6 +1,4 @@
 from typing import Union, List
-from urllib.parse import urlparse, parse_qs
-
 
 def getValue(source: dict, path: List[Union[str, int]]) -> Union[str, int, dict, None]:
     value = source
@@ -10,10 +8,7 @@ def getValue(source: dict, path: List[Union[str, int]]) -> Union[str, int, dict,
         if isinstance(key, str):
             if not isinstance(value, dict):
                 return None
-            if key in value:
-                value = value[key]
-            else:
-                return None
+            value = value.get(key)
         elif isinstance(key, int):
             if not isinstance(value, (list, tuple)):
                 return None
