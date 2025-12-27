@@ -13,6 +13,7 @@ class Search(SearchCore):
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
+        timeout (int, optional): Sets the request timeout in seconds. Defaults to 10 seconds. Pass None to use default.
 
     Examples:
         Calling `result` method gives the search result.
@@ -76,7 +77,7 @@ class Search(SearchCore):
         super().__init__(query, limit, language, region, None, timeout)  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await self._nextAsync()  # type: ignore
 
 
 class VideosSearch(SearchCore):
@@ -87,6 +88,7 @@ class VideosSearch(SearchCore):
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
+        timeout (int, optional): Sets the request timeout in seconds. Defaults to 10 seconds. Pass None to use default.
 
     Examples:
         Calling `result` method gives the search result.
@@ -150,7 +152,7 @@ class VideosSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.videos, timeout)  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await self._nextAsync()  # type: ignore
 
 
 class ChannelsSearch(SearchCore):
@@ -161,6 +163,7 @@ class ChannelsSearch(SearchCore):
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
+        timeout (int, optional): Sets the request timeout in seconds. Defaults to 10 seconds. Pass None to use default.
 
     Examples:
         Calling `result` method gives the search result.
@@ -199,7 +202,7 @@ class ChannelsSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.channels, timeout)  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await self._nextAsync()  # type: ignore
 
 
 class PlaylistsSearch(SearchCore):
@@ -210,6 +213,7 @@ class PlaylistsSearch(SearchCore):
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
+        timeout (int, optional): Sets the request timeout in seconds. Defaults to 10 seconds. Pass None to use default.
 
     Examples:
         Calling `result` method gives the search result.
@@ -261,7 +265,7 @@ class PlaylistsSearch(SearchCore):
         super().__init__(query, limit, language, region, SearchMode.playlists, timeout)  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync()
+        return await self._nextAsync()  # type: ignore
 
 class CustomSearch(SearchCore):
     '''Performs custom search in YouTube with search filters or sorting orders. 
@@ -282,6 +286,7 @@ class CustomSearch(SearchCore):
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
+        timeout (int, optional): Sets the request timeout in seconds. Defaults to 10 seconds. Pass None to use default.
     
     Examples:
         Calling `result` method gives the search result.
@@ -345,7 +350,7 @@ class CustomSearch(SearchCore):
         super().__init__(query, limit, language, region, searchPreferences, timeout)  # type: ignore
 
     async def next(self) -> Dict[str, Any]:
-        return await self._nextAsync() 
+        return await self._nextAsync()  # type: ignore
 
 class ChannelSearch(ChannelSearchCore):
     '''Searches for videos in specific channel in YouTube.
@@ -355,6 +360,7 @@ class ChannelSearch(ChannelSearchCore):
         browseId (str): Channel ID
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
+        timeout (int, optional): Sets the request timeout in seconds. Defaults to 10 seconds. Pass None to use default.
 
     Examples:
         Calling `result` method gives the search result.
@@ -406,7 +412,7 @@ class ChannelSearch(ChannelSearchCore):
                     "published": "10 months ago",
                     "channel": {
                         "name": "Harry Styles",
-                        "thumbnails": [
+                       "thumbnails": [
                             {
                                 "url": "https://yt3.ggpht.com/ytc/AAUvwnhR81ocC_KalYEk5ItnJcfMBqaiIpuM1B0lJyg4Rw=s88-c-k-c0x00ffffff-no-rj",
                                 "width": 68,
