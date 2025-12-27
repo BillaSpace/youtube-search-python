@@ -1,21 +1,23 @@
-import json
 import copy
-from typing import Union
+from typing import Union, Optional
 from urllib.parse import urlencode
 
 from youtubesearchpython.core.requests import RequestCore
-from youtubesearchpython.handlers.componenthandler import ComponentHandler
-from youtubesearchpython.handlers.requesthandler import RequestHandler
+from youtubesearchpython.core.componenthandler import ComponentHandler
 from youtubesearchpython.core.constants import *
+from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubeParseError
+
+import json
+import httpx
 
 
-class SearchCore(RequestCore, RequestHandler, ComponentHandler):
+class SearchCore(RequestCore, ComponentHandler):
     response = None
     responseSource = None
     resultComponents = []
 
-    def __init__(self, query: str, limit: int, language: str, region: str, searchPreferences: str, timeout: int):
-        super().__init__()
+    def __init__(self, query: str, limit: int, language: str, region: str, searchPreferences: str, timeout: Optional[int]):
+        super().__init__(timeout=timeout)
         self.query = query
         self.limit = limit
         self.language = language
@@ -47,24 +49,60 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
 
     def _makeRequest(self) -> None:
         self._getRequestBody()
-        request = self.syncPostRequest()
         try:
+            request = self.syncPostRequest()
+            if request.status_code != 200:
+                raise YouTubeRequestError(f'Request failed with status code {request.status_code}. URL: {self.url}')
             self.response = request.text
-        except:
-            raise Exception('ERROR: Could not make request.')
+        except httpx.RequestError as e:
+            raise YouTubeRequestError(f'Failed to make request to {self.url}: {str(e)}')
+        except httpx.HTTPStatusError as e:
+            raise YouTubeRequestError(f'HTTP error {e.response.status_code} for {self.url}: {str(e)}')
+        except Exception as e:
+            raise YouTubeRequestError(f'Unexpected error making request: {str(e)}')
 
     async def _makeAsyncRequest(self) -> None:
         self._getRequestBody()
-        request = await self.asyncPostRequest()
         try:
+            request = await self.asyncPostRequest()
+            if request.status_code != 200:
+                raise YouTubeRequestError(f'Request failed with status code {request.status_code}. URL: {self.url}')
             self.response = request.text
-        except:
-            raise Exception('ERROR: Could not make request.')
+        except httpx.RequestError as e:
+            raise YouTubeRequestError(f'Failed to make request to {self.url}: {str(e)}')
+        except httpx.HTTPStatusError as e:
+            raise YouTubeRequestError(f'HTTP error {e.response.status_code} for {self.url}: {str(e)}')
+        except Exception as e:
+            raise YouTubeRequestError(f'Unexpected error making request: {str(e)}')
+
+    def _parseSource(self) -> None:
+        try:
+            if not self.continuationKey:
+                responseContent = self._getValue(json.loads(self.response), contentPath)
+            else:
+                responseContent = self._getValue(json.loads(self.response), continuationContentPath)
+            if responseContent:
+                for element in responseContent:
+                    if itemSectionKey in element.keys():
+                        self.responseSource = self._getValue(element, [itemSectionKey, 'contents'])
+                    if continuationItemKey in element.keys():
+                        self.continuationKey = self._getValue(element, continuationKeyPath)
+            else:
+                self.responseSource = self._getValue(json.loads(self.response), fallbackContentPath)
+                self.continuationKey = self._getValue(self.responseSource[-1], continuationKeyPath)
+        except json.JSONDecodeError as e:
+            raise YouTubeParseError(f'Failed to parse JSON response: {str(e)}')
+        except KeyError as e:
+            raise YouTubeParseError(f'Missing expected key in response: {str(e)}')
+        except Exception as e:
+            raise YouTubeParseError(f'Failed to parse YouTube response: {str(e)}')
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
         '''Returns the search result.
+
         Args:
             mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
+
         Returns:
             Union[str, dict]: Returns JSON or dictionary.
         '''
@@ -75,8 +113,10 @@ class SearchCore(RequestCore, RequestHandler, ComponentHandler):
 
     def _next(self) -> bool:
         '''Gets the subsequent search result. Call result
+
         Args:
             mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
+
         Returns:
             Union[str, dict]: Returns True if getting more results was successful.
         '''
