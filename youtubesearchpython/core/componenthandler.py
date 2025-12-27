@@ -1,47 +1,66 @@
 from typing import Union, List
 from youtubesearchpython.core.constants import *
+from urllib.parse import urlparse, parse_qs
+import re
 
 
-def getValue(source: dict, path: List[str]) -> Union[str, int, dict, None]:
+def getValue(source: dict, path: List[Union[str, int]]) -> Union[str, int, dict, None]:
     value = source
+
     for key in path:
-        if type(key) is str:
-            if key in value.keys():
-                value = value[key]
-            else:
-                value = None
-                break
-        elif type(key) is int:
-            if len(value) != 0:
-                value = value[key]
-            else:
-                value = None
-                break
+        if value is None:
+            return None
+
+        if isinstance(key, str):
+            if not isinstance(value, dict):
+                return None
+            value = value.get(key)
+            if value is None:
+                return None
+
+        elif isinstance(key, int):
+            if not isinstance(value, (list, tuple)):
+                return None
+            if key < 0 or key >= len(value):
+                return None
+            value = value[key]
+
+        else:
+            return None
+            
     return value
 
 
 def getVideoId(videoLink: str) -> str:
-    if 'youtu.be' in videoLink:
-        path_part = videoLink.split('?')[0].split('#')[0]
-        if path_part[-1] == '/':
-            return path_part.split('/')[-2]
-        return path_part.split('/')[-1]
-    elif 'youtube.com' in videoLink:
-        if '/shorts/' in videoLink:
-            path_part = videoLink.split('/shorts/')[1].split('?')[0].split('#')[0]
-            return path_part
-        elif '/live/' in videoLink:
-            path_part = videoLink.split('/live/')[1].split('?')[0].split('#')[0]
-            return path_part
-        elif 'v=' in videoLink:
-            v_index = videoLink.index('v=') + 2
-            end_index = len(videoLink)
-            for char in ['&', '#']:
-                if char in videoLink[v_index:]:
-                    end_index = min(end_index, videoLink.index(char, v_index))
-            return videoLink[v_index:end_index]
-        return videoLink
-    else:
+    try:
+        parsed = urlparse(videoLink)
+        host = (parsed.netloc or "").lower()
+
+        if "youtu.be" in host:
+            path = parsed.path.rstrip("/")
+            if path:
+                return path.split("/")[-1]
+
+        if "youtube" in host or "youtube-nocookie" in host:
+            qs = parse_qs(parsed.query)
+
+            if "v" in qs and qs["v"]:
+                return qs["v"][0]
+
+            parts = [p for p in parsed.path.split("/") if p]
+
+            for i, p in enumerate(parts):
+                if p in ("embed", "v", "live") and i + 1 < len(parts):
+                    return parts[i + 1]
+
+            if parts:
+                return parts[-1]
+        core = videoLink.split("?")[0].split("#")[0].rstrip("/")
+        if "/" in core:
+            return core.split("/")[-1]
+        return core
+
+    except Exception:
         return videoLink
 
 
