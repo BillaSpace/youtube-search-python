@@ -58,15 +58,27 @@ CLIENTS = {
 
 
 def _get_cleaned_url(video_link: str) -> str:
-    """
-    Cleans the YouTube video link by removing any extra parameters,
-    ensuring only the video ID is present.
-    """
-    parsed_url = urlparse(video_link)
-    video_id = parse_qs(parsed_url.query).get("v")
-    if video_id:
-        return f"https://www.youtube.com/watch?v={video_id[0]}"
-    return video_link
+    try:
+        parsed = urlparse(video_link)
+        host = (parsed.netloc or "").lower()
+
+        if "youtu.be" in host:
+            vid = parsed.path.strip("/").split("/")[-1]
+            return f"https://www.youtube.com/watch?v={vid}"
+
+        if "youtube" in host or "youtube-nocookie" in host:
+            qs = parse_qs(parsed.query)
+            if "v" in qs and qs["v"]:
+                return f"https://www.youtube.com/watch?v={qs['v'][0]}"
+
+            parts = [p for p in parsed.path.split("/") if p]
+            for i, p in enumerate(parts):
+                if p in ("shorts", "embed", "v", "live") and i + 1 < len(parts):
+                    return f"https://www.youtube.com/watch?v={parts[i + 1]}"
+
+        return video_link
+    except Exception:
+        return video_link
 
 
 class VideoCore(RequestCore):
