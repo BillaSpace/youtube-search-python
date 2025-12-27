@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.requests import RequestCore
 from youtubesearchpython.core.componenthandler import getValue, getVideoId
+from youtubesearchpython.core.exceptions import YouTubeRequestError
 
 
 
@@ -27,7 +28,7 @@ class TranscriptCore(RequestCore):
         j = r.json()
         panels = getValue(j, ["engagementPanels"])
         if not panels:
-            raise Exception("Failed to create first request - No engagementPanels is present.")
+            raise YouTubeRequestError("Failed to create first request - No engagementPanels is present.")
         key = ""
         for panel in panels:
             panel = panel["engagementPanelSectionListRenderer"]
@@ -44,12 +45,12 @@ class TranscriptCore(RequestCore):
             'key': searchKey,
             "prettyPrint": "false"
         })
-        
+        # clientVersion must be newer than in requestPayload
         self.data = {
             "context": {
                 "client": {
                     "clientName": "WEB",
-                    "clientVersion": "2.20241210.01.00",
+                    "clientVersion": "2.20220318.00.00",
                     "newVisitorCookie": True,
                 },
                 "user": {
@@ -65,6 +66,7 @@ class TranscriptCore(RequestCore):
         segments = []
         languages = []
         if not transcripts:
+            # No transcripts available
             self.result = {"segments": segments, "languages": languages}
             return
         for segment in transcripts:
@@ -111,14 +113,3 @@ class TranscriptCore(RequestCore):
         self.prepare_transcript_request()
         self.data = self.syncPostRequest()
         self.extract_transcript()
-
-    def _safe_load_response(self, response):
-        try:
-            if hasattr(response, "json"):
-                return response.json()
-            if hasattr(response, "text"):
-                return json.loads(response.text)
-            if isinstance(response, (str, bytes)):
-                return json.loads(response)
-        except Exception:
-            return {}
