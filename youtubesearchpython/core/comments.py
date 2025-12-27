@@ -4,10 +4,12 @@ import itertools
 import json
 from typing import Iterable, Mapping, Tuple, TypeVar, Union, List
 from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from youtubesearchpython.core.componenthandler import getVideoId, getValue
 from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.requests import RequestCore
+from youtubesearchpython.core.exceptions import YouTubeRequestError
 
 K = TypeVar("K")
 T = TypeVar("T")
@@ -18,7 +20,6 @@ class CommentsCore(RequestCore):
     continuationKey = None
     isNextRequest = False
     response = None
-    commentsDisabled = False
 
     def __init__(self, videoLink: str):
         super().__init__()
@@ -27,187 +28,155 @@ class CommentsCore(RequestCore):
         self.videoLink = videoLink
 
     def prepare_continuation_request(self):
-        if not searchKey:
-            raise Exception("searchKey is not set from Library end.")
-        self.data = copy.deepcopy(requestPayload)
-        ctx = self.data.setdefault("context", {})
-        client = ctx.setdefault("client", {})
-        client.setdefault("clientName", client.get("clientName", "WEB"))
-        client.setdefault("clientVersion", client.get("clientVersion", "2.20241210.01.00"))
-        self.data["videoId"] = getVideoId(self.videoLink)
-        self.url = f"https://www.youtube.com/youtubei/v1/next?{urlencode({'key': searchKey})}"
+        self.data = {
+            "context": {"client": {"clientName": "WEB", "clientVersion": "2.20210820.01.00"}},
+            "videoId": getVideoId(self.videoLink)
+        }
+        self.url = f"https://www.youtube.com/youtubei/v1/next?key={searchKey}"
 
     def prepare_comments_request(self):
-        if not searchKey:
-            raise Exception("searchKey is not set from linrary end.")
-        self.data = copy.deepcopy(requestPayload)
-        ctx = self.data.setdefault("context", {})
-        client = ctx.setdefault("client", {})
-        client.setdefault("clientName", client.get("clientName", "WEB"))
-        client.setdefault("clientVersion", client.get("clientVersion", "2.20210820.01.00"))
-        self.data["continuation"] = self.continuationKey
-        self.url = f"https://www.youtube.com/youtubei/v1/next?{urlencode({'key': searchKey})}"
+        self.data = {
+            "context": {"client": {"clientName": "WEB", "clientVersion": "2.20210820.01.00"}},
+            "continuation": self.continuationKey
+        }
 
     def parse_source(self):
-        data = self._safe_load_response(self.response)
-        idx = 0 if self.isNextRequest else 1
-        path = [
+        self.responseSource = getValue(self.response.json(), [
             "onResponseReceivedEndpoints",
-            idx,
+            0 if self.isNextRequest else 1,
             "appendContinuationItemsAction" if self.isNextRequest else "reloadContinuationItemsCommand",
             "continuationItems",
-        ]
-        self.responseSource = getValue(data, path) or []
+        ])
 
     def parse_continuation_source(self):
-        data = self._safe_load_response(self.response)
-
-        self.continuationKey = (
-            getValue(
-                data,
-                [
-                    "contents",
-                    "twoColumnWatchNextResults",
-                    "results",
-                    "results",
-                    "contents",
-                    -1,
-                    "itemSectionRenderer",
-                    "contents",
-                    -1,
-                    "continuationItemRenderer",
-                    "continuationEndpoint",
-                    "continuationCommand",
-                    "token",
-                ],
-            )
-            or getValue(
-                data,
-                [
-                    "onResponseReceivedEndpoints",
-                    0,
-                    "reloadContinuationItemsCommand",
-                    "continuationItems",
-                    -1,
-                    "continuationItemRenderer",
-                    "continuationEndpoint",
-                    "continuationCommand",
-                    "token",
-                ],
-            )
-        )
-
-        if not self.continuationKey:
-            disabled_msg = getValue(
-                data,
-                [
-                    "contents",
-                    "twoColumnWatchNextResults",
-                    "results",
-                    "results",
-                    "contents",
-                    -1,
-                    "itemSectionRenderer",
-                    "contents",
-                    0,
-                    "messageRenderer",
-                    "text",
-                    "runs",
-                    0,
-                    "text",
-                ],
-            )
-            if disabled_msg:
-                self.commentsDisabled = True
+        response_json = self.response.json()
+        
+        paths = [
+            [
+                "contents",
+                "twoColumnWatchNextResults",
+                "results",
+                "results",
+                "contents",
+                -1,
+                "itemSectionRenderer",
+                "contents",
+                0,
+                "continuationItemRenderer",
+                "continuationEndpoint",
+                "continuationCommand",
+                "token",
+            ],
+            [
+                "contents",
+                "twoColumnWatchNextResults",
+                "results",
+                "results",
+                "contents",
+                -1,
+                "itemSectionRenderer",
+                "contents",
+                -1,
+                "continuationItemRenderer",
+                "continuationEndpoint",
+                "continuationCommand",
+                "token",
+            ],
+            [
+                "onResponseReceivedEndpoints",
+                0,
+                "reloadContinuationItemsCommand",
+                "continuationItems",
+                -1,
+                "continuationItemRenderer",
+                "continuationEndpoint",
+                "continuationCommand",
+                "token",
+            ],
+            [
+                "onResponseReceivedEndpoints",
+                0,
+                "appendContinuationItemsAction",
+                "continuationItems",
+                -1,
+                "continuationItemRenderer",
+                "continuationEndpoint",
+                "continuationCommand",
+                "token",
+            ],
+        ]
+        
+        for path in paths:
+            continuation = getValue(response_json, path)
+            if continuation:
+                self.continuationKey = continuation
+                return
+        
+        self.continuationKey = None
 
     def sync_make_comment_request(self):
-        if self.commentsDisabled:
-            return
         self.prepare_comments_request()
         self.response = self.syncPostRequest()
-        if hasattr(self.response, "status_code") and self.response.status_code == 200:
+        if self.response.status_code == 200:
             self.parse_source()
 
     def sync_make_continuation_request(self):
         self.prepare_continuation_request()
         self.response = self.syncPostRequest()
-
-        if not hasattr(self.response, "status_code"):
-            raise Exception("Invalid response object (no status_code)")
-
-        if self.response.status_code != 200:
-            raise Exception(f"Comments continuation request failed with status {self.response.status_code}")
-
-        self.parse_continuation_source()
-
-        if not self.continuationKey and not self.commentsDisabled:
-            print(
-                "[CommentsCore] continuation token not found | "
-                f"video={getVideoId(self.videoLink)} | "
-                "reason=missing_token"
-            )
+        if self.response.status_code == 200:
+            self.parse_continuation_source()
+        else:
+            raise YouTubeRequestError(f"Status code is not 200: {self.response.status_code}")
 
     async def async_make_comment_request(self):
-        if self.commentsDisabled:
-            return
         self.prepare_comments_request()
         self.response = await self.asyncPostRequest()
-        if hasattr(self.response, "status_code") and self.response.status_code == 200:
+        if self.response.status_code == 200:
             self.parse_source()
 
     async def async_make_continuation_request(self):
         self.prepare_continuation_request()
         self.response = await self.asyncPostRequest()
-
-        if not hasattr(self.response, "status_code"):
-            raise Exception("Invalid response object (no status_code)")
-
-        if self.response.status_code != 200:
-            raise Exception(f"Comments continuation request failed with status {self.response.status_code}")
-
-        self.parse_continuation_source()
-
-        if not self.continuationKey and not self.commentsDisabled:
-            print(
-                "[CommentsCore] continuation token not found | "
-                f"video={getVideoId(self.videoLink)} | "
-                "reason=missing_token"
-            )
+        if self.response.status_code == 200:
+            self.parse_continuation_source()
+            # Don't raise error if continuation key is None - video might not have comments
+            # The comment request will handle empty results gracefully
+        else:
+            raise YouTubeRequestError(f"Status code is not 200: {self.response.status_code}")
 
     def sync_create(self):
         self.sync_make_continuation_request()
-        if self.commentsDisabled:
-            print("Comments are disabled for this video")
-            return
-        self.sync_make_comment_request()
-        self.__getComponents()
+        # Only make comment request if we have a continuation key
+        if self.continuationKey:
+            self.sync_make_comment_request()
+            self.__getComponents()
+        else:
+            # No comments available - set empty result
+            self.commentsComponent = {"result": []}
 
     def sync_create_next(self):
-        if self.commentsDisabled:
-            return
         self.isNextRequest = True
         self.sync_make_comment_request()
         self.__getComponents()
 
     async def async_create(self):
         await self.async_make_continuation_request()
-        if self.commentsDisabled:
-            print("Comments are disabled for this video")
-            return
-        await self.async_make_comment_request()
-        self.__getComponents()
+        # Only make comment request if we have a continuation key
+        if self.continuationKey:
+            await self.async_make_comment_request()
+            self.__getComponents()
+        else:
+            # No comments available - set empty result
+            self.commentsComponent = {"result": []}
 
     async def async_create_next(self):
-        if self.commentsDisabled:
-            return
         self.isNextRequest = True
         await self.async_make_comment_request()
         self.__getComponents()
 
     def __getComponents(self) -> None:
         comments = []
-        src = self.responseSource or []
-        for comment in src:
+        for comment in self.responseSource:
             comment = getValue(comment, ["commentThreadRenderer", "comment", "commentRenderer"])
             try:
                 j = {
@@ -215,7 +184,7 @@ class CommentsCore(RequestCore):
                     "author": {
                         "id": self.__getValue(comment, ["authorEndpoint", "browseEndpoint", "browseId"]),
                         "name": self.__getValue(comment, ["authorText", "simpleText"]),
-                        "thumbnails": self.__getValue(comment, ["authorThumbnail", "thumbnails"]),
+                        "thumbnails": self.__getValue(comment, ["authorThumbnail", "thumbnails"])
                     },
                     "content": self.__getValue(comment, ["contentText", "runs", 0, "text"]),
                     "published": self.__getValue(comment, ["publishedTimeText", "runs", 0, "text"]),
@@ -224,53 +193,46 @@ class CommentsCore(RequestCore):
                     "voteStatus": self.__getValue(comment, ["voteStatus"]),
                     "votes": {
                         "simpleText": self.__getValue(comment, ["voteCount", "simpleText"]),
-                        "label": self.__getValue(comment, ["voteCount", "accessibility", "accessibilityData", "label"]),
+                        "label": self.__getValue(comment, ["voteCount", "accessibility", "accessibilityData", "label"])
                     },
                     "replyCount": self.__getValue(comment, ["replyCount"]),
                 }
                 comments.append(j)
-            except Exception:
+            except (KeyError, AttributeError, IndexError, TypeError):
                 pass
 
         self.commentsComponent["result"].extend(comments)
-        self.continuationKey = self.__getValue(
-            self.responseSource or [],
-            [-1, "continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"],
-        )
+        self.continuationKey = self.__getValue(self.responseSource, [-1, "continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
 
     def __result(self, mode: int) -> Union[dict, str]:
-        if self.commentsDisabled:
-            return {"result": "Comments are disabled"}
         if mode == ResultMode.dict:
             return self.commentsComponent
         elif mode == ResultMode.json:
             return json.dumps(self.commentsComponent, indent=4)
 
-    def __getValue(self, source: Union[dict, list, None], path: Iterable[Union[str, int]]) -> Union[str, int, dict, None]:
+    def __getValue(self, source: dict, path: Iterable[str]) -> Union[str, int, dict, None]:
         value = source
         for key in path:
-            if value is None:
-                return None
-            if isinstance(key, str):
-                if isinstance(value, dict) and key in value:
+            if type(key) is str:
+                if key in value.keys():
                     value = value[key]
                 else:
-                    return None
-            elif isinstance(key, int):
-                if isinstance(value, list) and len(value) > abs(key):
+                    value = None
+                    break
+            elif type(key) is int:
+                if len(value) != 0:
                     value = value[key]
                 else:
-                    return None
-            else:
-                return None
+                    value = None
+                    break
         return value
 
     def __getAllWithKey(self, source: Iterable[Mapping[K, T]], key: K) -> Iterable[T]:
-        for item in source or []:
+        for item in source:
             if key in item:
                 yield item[key]
 
-    def __getValueEx(self, source: dict, path: List[Union[str, None]]) -> Iterable[Union[str, int, dict, None]]:
+    def __getValueEx(self, source: dict, path: List[str]) -> Iterable[Union[str, int, dict, None]]:
         if len(path) <= 0:
             yield source
             return
@@ -279,27 +241,18 @@ class CommentsCore(RequestCore):
         if key is None:
             following_key = upcoming[0]
             upcoming = upcoming[1:]
-            for val in self.__getAllWithKey(source or [], following_key):
+            if following_key is None:
+                raise ValueError("Cannot search for a key twice consecutive or at the end with no key given")
+            values = self.__getAllWithKey(source, following_key)
+            for val in values:
                 yield from self.__getValueEx(val, path=upcoming)
         else:
-            val = self.__getValue(source, [key])
-            if val is None:
-                return
+            val = self.__getValue(source, path=[key])
             yield from self.__getValueEx(val, path=upcoming)
 
-    def __getFirstValue(self, source: dict, path: Iterable[Union[str, None]]) -> Union[str, int, dict, None]:
-        for val in self.__getValueEx(source or {}, list(path)):
+    def __getFirstValue(self, source: dict, path: Iterable[str]) -> Union[str, int, dict, None]:
+        values = self.__getValueEx(source, list(path))
+        for val in values:
             if val is not None:
                 return val
         return None
-
-    def _safe_load_response(self, response):
-        try:
-            if hasattr(response, "json"):
-                return response.json()
-            if hasattr(response, "text"):
-                return json.loads(response.text)
-            if isinstance(response, (str, bytes)):
-                return json.loads(response)
-        except Exception:
-            return {}
