@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 requestPayload = {
     "context": {
         "client": {
@@ -14,11 +13,13 @@ requestPayload = {
     }
 }
 
+
 userAgent = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/122.0.0.0 Safari/537.36"
 )
+
 
 videoElementKey = "videoRenderer"
 channelElementKey = "channelRenderer"
@@ -26,30 +27,14 @@ playlistElementKey = "playlistRenderer"
 shelfElementKey = "shelfRenderer"
 itemSectionKey = "itemSectionRenderer"
 continuationItemKey = "continuationItemRenderer"
-playerResponseKey = "playerResponse"
 richItemKey = "richItemRenderer"
+playerResponseKey = "playerResponse"
+
 hashtagElementKey = "hashtagTileRenderer"
 hashtagBrowseKey = "FEhashtag"
 
-hashtagVideosPath = [
-    "contents",
-    "twoColumnBrowseResultsRenderer",
-    "tabs",
-    0,
-    "tabRenderer",
-    "content",
-    "richGridRenderer",
-    "contents",
-]
-
-hashtagContinuationVideosPath = [
-    "onResponseReceivedActions",
-    0,
-    "appendContinuationItemsAction",
-    "continuationItems",
-]
-
 searchKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
+
 
 contentPath = [
     "contents",
@@ -80,6 +65,26 @@ continuationKeyPath = [
     "continuationCommand",
     "token",
 ]
+
+
+hashtagVideosPath = [
+    "contents",
+    "twoColumnBrowseResultsRenderer",
+    "tabs",
+    0,
+    "tabRenderer",
+    "content",
+    "richGridRenderer",
+    "contents",
+]
+
+hashtagContinuationVideosPath = [
+    "onResponseReceivedActions",
+    0,
+    "appendContinuationItemsAction",
+    "continuationItems",
+]
+
 
 playlistInfoPath = [
     "response",
