@@ -1,16 +1,19 @@
-import json
 import copy
-from typing import Union
+from typing import Union, Optional
+import json
 from urllib.parse import urlencode
 
-from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.requests import RequestCore
-from youtubesearchpython.handlers.componenthandler import ComponentHandler
+from youtubesearchpython.core.componenthandler import ComponentHandler
+from youtubesearchpython.core.constants import *
+from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubeParseError
+import httpx
 
 
 class ChannelSearchCore(RequestCore, ComponentHandler):
     response = None
     responseSource = None
+    resultComponents = []
 
     def __init__(self, query: str, language: str, region: str, searchPreferences: str, browseId: str, timeout: int):
         super().__init__()
@@ -21,7 +24,6 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         self.searchPreferences = searchPreferences
         self.continuationKey = None
         self.timeout = timeout
-        self.resultComponents = []
 
     def sync_create(self):
         self._syncRequest()
@@ -32,79 +34,116 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         await self._asyncRequest()
         self._parseChannelSearchSource()
         self.response = self._getChannelSearchComponent(self.response)
-        return self.response
+        return {'result': self.response}
 
     def _parseChannelSearchSource(self) -> None:
         try:
-            contents = self.response.get("contents", {})
-
-            tabs = (
-                contents.get("twoColumnBrowseResultsRenderer", {}).get("tabs")
-                or contents.get("singleColumnBrowseResultsRenderer", {}).get("tabs")
-                or []
-            )
-
-            last_tab = tabs[-1] if tabs else {}
-
-            if "expandableTabRenderer" in last_tab:
-                self.response = (
-                    last_tab["expandableTabRenderer"]
-                    .get("content", {})
-                    .get("sectionListRenderer", {})
-                    .get("contents", [])
-                )
-            else:
-                tab_renderer = last_tab.get("tabRenderer", {})
-                content = tab_renderer.get("content")
-                if content and "sectionListRenderer" in content:
-                    self.response = content["sectionListRenderer"].get("contents", [])
+            # Try to get tabs from response
+            tabs = self.response.get("contents", {}).get("twoColumnBrowseResultsRenderer", {}).get("tabs", [])
+            if not tabs:
+                # Try alternative structure
+                tabs = self.response.get("contents", {}).get("singleColumnBrowseResultsRenderer", {}).get("tabs", [])
+            
+            if not tabs:
+                self.response = []
+                return
+            
+            # Get the last tab (usually the search results tab)
+            last_tab = tabs[-1]
+            
+            # Try expandableTabRenderer first
+            if 'expandableTabRenderer' in last_tab:
+                expandable = last_tab["expandableTabRenderer"]
+                # Check if content exists
+                if 'content' in expandable:
+                    content = expandable["content"]
+                    if 'sectionListRenderer' in content:
+                        self.response = content["sectionListRenderer"].get("contents", [])
+                    else:
+                        self.response = []
+                else:
+                    # Try to get from expandableTabRenderer directly
+                    if 'sectionListRenderer' in expandable:
+                        self.response = expandable["sectionListRenderer"].get("contents", [])
+                    else:
+                        self.response = []
+            # Try tabRenderer
+            elif 'tabRenderer' in last_tab:
+                tab_renderer = last_tab["tabRenderer"]
+                if 'content' in tab_renderer:
+                    content = tab_renderer["content"]
+                    if 'sectionListRenderer' in content:
+                        self.response = content["sectionListRenderer"].get("contents", [])
+                    else:
+                        self.response = []
                 else:
                     self.response = []
-        except Exception:
-            raise Exception("ERROR: Could not parse YouTube response.")
+            else:
+                self.response = []
+        except (KeyError, AttributeError, IndexError) as e:
+            raise YouTubeParseError(f'Failed to parse YouTube response: {str(e)}')
+        except Exception as e:
+            raise YouTubeParseError(f'Unexpected error parsing response: {str(e)}')
 
     def _getRequestBody(self):
+        ''' Fixes #47 '''
         requestBody = copy.deepcopy(requestPayload)
-        requestBody["query"] = self.query or ""
-
-        context = requestBody.setdefault("context", {})
-        client = context.setdefault("client", {})
-        client.update({
-            "hl": self.language or client.get("hl"),
-            "gl": self.region or client.get("gl"),
+        requestBody['query'] = self.query
+        requestBody['client'] = {
+            'hl': self.language,
+            'gl': self.region,
+        }
+        requestBody['params'] = self.searchPreferences
+        requestBody['browseId'] = self.browseId
+        self.url = 'https://www.youtube.com/youtubei/v1/browse' + '?' + urlencode({
+            'key': searchKey,
         })
-
-        if self.searchPreferences:
-            requestBody["params"] = self.searchPreferences
-        if self.browseId:
-            requestBody["browseId"] = self.browseId
-        if self.continuationKey:
-            requestBody["continuation"] = self.continuationKey
-
-        if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
-
-        self.url = "https://www.youtube.com/youtubei/v1/browse?" + urlencode({"key": searchKey})
         self.data = requestBody
 
     def _syncRequest(self) -> None:
+        ''' Fixes #47 '''
         self._getRequestBody()
-        request = self.syncPostRequest()
+
         try:
-            self.response = request.json() if hasattr(request, "json") else json.loads(request.text)
-        except Exception:
-            raise Exception("ERROR: Could not make request.")
+            request = self.syncPostRequest()
+            if request.status_code != 200:
+                raise YouTubeRequestError(f'Request failed with status code {request.status_code}. URL: {self.url}')
+            self.response = request.json()
+        except httpx.RequestError as e:
+            raise YouTubeRequestError(f'Failed to make request to {self.url}: {str(e)}')
+        except httpx.HTTPStatusError as e:
+            raise YouTubeRequestError(f'HTTP error {e.response.status_code} for {self.url}: {str(e)}')
+        except json.JSONDecodeError as e:
+            raise YouTubeRequestError(f'Failed to decode JSON response: {str(e)}')
+        except Exception as e:
+            raise YouTubeRequestError(f'Unexpected error making request: {str(e)}')
 
     async def _asyncRequest(self) -> None:
+        ''' Fixes #47 '''
         self._getRequestBody()
-        request = await self.asyncPostRequest()
+
         try:
-            self.response = request.json() if hasattr(request, "json") else json.loads(request.text)
-        except Exception:
-            raise Exception("ERROR: Could not make request.")
+            request = await self.asyncPostRequest()
+            if request.status_code != 200:
+                raise YouTubeRequestError(f'Request failed with status code {request.status_code}. URL: {self.url}')
+            self.response = request.json()
+        except httpx.RequestError as e:
+            raise YouTubeRequestError(f'Failed to make request to {self.url}: {str(e)}')
+        except httpx.HTTPStatusError as e:
+            raise YouTubeRequestError(f'HTTP error {e.response.status_code} for {self.url}: {str(e)}')
+        except json.JSONDecodeError as e:
+            raise YouTubeRequestError(f'Failed to decode JSON response: {str(e)}')
+        except Exception as e:
+            raise YouTubeRequestError(f'Unexpected error making request: {str(e)}')
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
+        '''Returns the search result.
+        Args:
+            mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
+        Returns:
+            Union[str, dict]: Returns JSON or dictionary.
+        '''
         if mode == ResultMode.json:
-            return json.dumps({"result": self.response}, indent=4)
+            return json.dumps({'result': self.response}, indent=4)
         elif mode == ResultMode.dict:
-            return {"result": self.response}
+            return {'result': self.response}
