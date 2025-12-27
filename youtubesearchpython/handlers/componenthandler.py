@@ -103,11 +103,11 @@ class ComponentHandler:
                     element = first_content["playlistRenderer"]
                     responsetype = "playlist"
                 else:
-                    raise Exception(f'Unexpected first_content {first_content}')
+                    raise ValueError(f'Unexpected first_content {first_content}')
             elif 'continuationItemRenderer' in element:
                 continue
             else:
-                raise Exception(f'Unexpected element {element}')
+                raise ValueError(f'Unexpected element {element}')
             
             if responsetype == "video":
                 json = {
