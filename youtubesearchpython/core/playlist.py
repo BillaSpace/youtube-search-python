@@ -3,12 +3,14 @@ import copy
 import itertools
 import json
 import re
-from typing import Iterable, Mapping, Tuple, TypeVar, Union, List
+from typing import Iterable, Mapping, Tuple, TypeVar, Union, List, Optional
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.requests import RequestCore
+from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubeParseError
+import httpx
 
 
 K = TypeVar("K")
@@ -20,8 +22,8 @@ class PlaylistCore(RequestCore):
     result = None
     continuationKey = None
 
-    def __init__(self, playlistLink: str, componentMode: str, resultMode: int, timeout: int):
-        super().__init__()
+    def __init__(self, playlistLink: str, componentMode: str, resultMode: int, timeout: Optional[int]):
+        super().__init__(timeout=timeout)
         self.componentMode = componentMode
         self.resultMode = resultMode
         self.timeout = timeout
@@ -40,14 +42,14 @@ class PlaylistCore(RequestCore):
         if statusCode == 200:
             self.post_processing()
         else:
-            raise Exception('ERROR: Invalid status code.')
+            raise YouTubeRequestError(f'Invalid status code {statusCode} for playlist request')
 
     async def async_create(self):
         statusCode = await self.__makeAsyncRequest()
         if statusCode == 200:
             self.post_processing()
         else:
-            raise Exception('ERROR: Invalid status code.')
+            raise YouTubeRequestError(f'Invalid status code {statusCode} for playlist async request')
 
     def next_post_processing(self):
         self.__parseSource()
@@ -65,7 +67,7 @@ class PlaylistCore(RequestCore):
             if statusCode.status_code == 200:
                 self.next_post_processing()
             else:
-                raise Exception('ERROR: Invalid status code.')
+                raise YouTubeRequestError(f'Invalid status code {statusCode.status_code} for playlist next request')
 
     async def _async_next(self):
         if self.continuationKey:
@@ -75,7 +77,7 @@ class PlaylistCore(RequestCore):
             if statusCode.status_code == 200:
                 self.next_post_processing()
             else:
-                raise Exception('ERROR: Invalid status code.')
+                raise YouTubeRequestError(f'Invalid status code {statusCode.status_code} for playlist async next request')
         else:
             await self.async_create()
     
@@ -123,14 +125,18 @@ class PlaylistCore(RequestCore):
         try:
             self.response = response.text
             return response.status_code
-        except:
-            raise Exception('ERROR: Could not make request.')
+        except (AttributeError, httpx.RequestError) as e:
+            raise YouTubeRequestError(f'Failed to make playlist request: {str(e)}')
+        except Exception as e:
+            raise YouTubeRequestError(f'Unexpected error making playlist request: {str(e)}')
 
     def __parseSource(self) -> None:
         try:
             self.responseSource = json.loads(self.response)
-        except:
-            raise Exception('ERROR: Could not parse YouTube response.')
+        except json.JSONDecodeError as e:
+            raise YouTubeParseError(f'Failed to parse JSON response for playlist: {str(e)}')
+        except Exception as e:
+            raise YouTubeParseError(f'Failed to parse YouTube playlist response: {str(e)}')
 
     def __getComponents(self) -> None:
         #print(self.responseSource)
@@ -161,7 +167,7 @@ class PlaylistCore(RequestCore):
                     "isPlayable": self.__getValue(video, ["isPlayable"]),
                 }
                 videos.append(j)
-            except:
+            except (KeyError, AttributeError, IndexError, TypeError):
                 pass
 
         playlistElement = {
@@ -343,7 +349,7 @@ class PlaylistCore(RequestCore):
             following_key = upcoming[0]
             upcoming = upcoming[1:]
             if following_key is None:
-                raise Exception("Cannot search for a key twice consecutive or at the end with no key given")
+                raise ValueError("Cannot search for a key twice consecutive or at the end with no key given")
             values = self.__getAllWithKey(source, following_key)
             for val in values:
                 yield from self.__getValueEx(val, path=upcoming)
