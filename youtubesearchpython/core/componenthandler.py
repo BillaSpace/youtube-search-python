@@ -1,28 +1,32 @@
 from typing import Union, List
 from urllib.parse import urlparse, parse_qs
+import re
 
 
 def getValue(source: dict, path: List[Union[str, int]]) -> Union[str, int, dict, None]:
     value = source
+
     for key in path:
         if value is None:
             return None
+
         if isinstance(key, str):
             if not isinstance(value, dict):
                 return None
-            if key in value:
-                value = value[key]
-            else:
+            value = value.get(key)
+            if value is None:
                 return None
+
         elif isinstance(key, int):
             if not isinstance(value, (list, tuple)):
                 return None
-            if 0 <= key < len(value):
-                value = value[key]
-            else:
+            if key < 0 or key >= len(value):
                 return None
+            value = value[key]
+
         else:
             return None
+            
     return value
 
 
