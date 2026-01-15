@@ -478,7 +478,7 @@ If this project helped you, please ⭐ star it on [GitHub](https://github.com/Bi
 
 - **Issues:** [GitHub Issues](https://github.com/BillaSpace/youtube-search-python/issues)
 - **Email:** srvopus@gmail.com
-- **Once i feel there is support my work is usable for everyone i'll release this library in pypi live as** :
+- **Once i feel there is support for my quality work , if this upgrades are usable for everyone i'll release this library in pypi live as** :
 -  ```yt-search-python```
 ---
 
