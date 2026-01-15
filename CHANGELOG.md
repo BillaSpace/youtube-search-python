@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [2.1.0] - 2026-01-15
+## [2.0.0] - 2026-01-15
 
 ### 🎉 Major Refactoring Release
 
@@ -15,7 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - 📦 **Module structure**: async operations now in `youtubesearchpython.future`
-- 📈 **Version**: 2.0.0 → 2.1.0
+- 📈 **Version**: 1.6.6+master → 2.0.0
 - 📖 **Documentation**: Professional README with real-world examples
 
 ### Fixed
@@ -51,7 +51,7 @@ All notable changes to this project will be documented in this file.
 
 ## Migration Guide
 
-### To 2.1.0
+### To 2.0.0
 
 **Async imports:**
 ```python
@@ -64,5 +64,4 @@ from youtubesearchpython import VideosSearch
 
 ---
 
-[2.1.0]: https://github.com/BillaSpace/youtube-search-python/releases/tag/v2.1.0
 [2.0.0]: https://github.com/BillaSpace/youtube-search-python/releases/tag/v2.0.0
