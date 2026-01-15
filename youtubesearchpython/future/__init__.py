@@ -1,20 +1,26 @@
 """
-youtube-search-python v2 (updated & enhanced)
-This is a maintained fork by Prakhar shukla / Rajnish Mishra with compatibility fixes for httpx>=0.28.1+.
-Original project by Hitesh Kumar Saini (alexmercerind).
+Asynchronous implementation of youtube-search-python.
+
+This module provides async/await versions of all search and retrieval operations.
+Use this for async applications, web frameworks (FastAPI, aiohttp), or when you need concurrent operations.
 """
 
-from youtubesearchpython.search import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, ChannelSearch
-from youtubesearchpython.extras import Video, Playlist, Suggestions, Hashtag, Comments, Transcript, Channel
-from youtubesearchpython.streamurlfetcher import StreamURLFetcher
-from youtubesearchpython.core.constants import *
+from youtubesearchpython.future.search import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, ChannelSearch
+from youtubesearchpython.future.extras import Video, Playlist, Suggestions, Hashtag, Comments, Transcript, Channel
+from youtubesearchpython.future.streamurlfetcher import StreamURLFetcher
 from youtubesearchpython.core.utils import *
+from youtubesearchpython.core.constants import *
+
 
 __title__        = 'youtube-search-python'
-__version__      = '2.1.0'
+__version__      = '2.1.0'    
 __author__       = 'Prakhar'
 __license__      = 'MIT'
 
-''' Deprecated. Present for legacy support. '''
-from youtubesearchpython.legacy import SearchVideos, SearchPlaylists
-from youtubesearchpython.legacy import SearchVideos as searchYoutube
+__all__ = [
+    'Search', 'VideosSearch', 'ChannelsSearch', 'PlaylistsSearch', 
+    'CustomSearch', 'ChannelSearch', 'Video', 'Playlist', 'Suggestions',
+    'Hashtag', 'Comments', 'Transcript', 'Channel', 'StreamURLFetcher',
+    'ResultMode', 'SearchMode', 'VideoUploadDateFilter', 'VideoDurationFilter',
+    'VideoSortOrder', 'ChannelRequestType', 'playlist_from_channel_id'
+]
