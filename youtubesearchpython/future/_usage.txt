@@ -1,0 +1,98 @@
+# Usage examples for youtube-search-python __future__ API (async)
+
+# Search – all types (videos + channels + playlists)
+from youtubesearchpython.__future__ import Search
+
+search = Search("lofi music", limit=5)
+result = await search.next()
+print(result)
+
+# VideosSearch – only videos
+from youtubesearchpython.__future__ import VideosSearch
+
+search = VideosSearch("anime edits", limit=10)
+result = await search.next()
+print(result)
+
+# ChannelsSearch – only channels
+from youtubesearchpython.__future__ import ChannelsSearch
+
+search = ChannelsSearch("MrBeast", limit=3)
+result = await search.next()
+print(result)
+
+# PlaylistsSearch – only playlists
+from youtubesearchpython.__future__ import PlaylistsSearch
+
+search = PlaylistsSearch("best english songs", limit=3)
+result = await search.next()
+print(result)
+
+# CustomSearch – with filters (searchPreferences)
+from youtubesearchpython.__future__ import CustomSearch
+
+sp = "EgQQARgB"   # example parameter (last hour videos)
+search = CustomSearch("gaming", searchPreferences=sp, limit=5)
+result = await search.next()
+print(result)
+
+# ChannelSearch – search inside a specific channel
+from youtubesearchpython.__future__ import ChannelSearch
+
+channel_id = "UCZFWPqqPkFlNwIxcpsLOwew"   # Harry Styles
+search = ChannelSearch("watermelon", browseId=channel_id)
+result = await search.next()
+print(result)
+
+
+
+# streamurlfetcher usage 🟢
+
+# How to use StreamURLFetcher (async)
+
+from youtubesearchpython.__future__ import StreamURLFetcher, Video
+
+# 1. Create the fetcher
+fetcher = StreamURLFetcher()
+
+# 2. Load player JavaScript (required once per fetcher instance)
+await fetcher.getJavaScript()
+
+# 3. Fetch video formats using Video.get()
+video = await Video.get("https://www.youtube.com/watch?v=aqz-KE-bpKQ")
+
+# 4. Get a single direct URL by itag
+url_251 = await fetcher.get(video, 251)
+print(url_251)
+
+# 5. Get all available direct URLs
+all_streams = await fetcher.getAll(video)
+print(all_streams)
+
+# all_streams structure:
+# {
+#   "streams": [
+#       {
+#           "url": "...",
+#           "itag": 251,
+#           "type": "audio/webm; codecs=\"opus\"",
+#           "quality": "tiny",
+#           "bitrate": 57976,
+#           "is_otf": false
+#       },
+#       {
+#           "url": "...",
+#           "itag": 22,
+#           "type": "video/mp4; codecs=\"avc1.64001F, mp4a.40.2\"",
+#           "quality": "hd720",
+#           "bitrate": 1340380,
+#           "is_otf": false
+#       },
+#       ...
+#   ]
+# }
+
+# Note:
+# - Run getJavaScript() once only.
+# - Reuse the same fetcher instance.
+# - Works directly with result from Video.get() or Video.getFormats().
