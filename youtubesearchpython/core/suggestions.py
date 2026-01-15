@@ -23,17 +23,32 @@ class SuggestionsCore(RequestCore):
         searchSuggestions = []
         self.__parseSource()
         
-        for element in self.responseSource:
-            if isinstance(element, list):
-                for searchSuggestionElement in element:
-                    if isinstance(searchSuggestionElement, list) and len(searchSuggestionElement) > 0:
-                        searchSuggestions.append(searchSuggestionElement[0])
-                break
-        
+        if isinstance(self.responseSource, list) and len(self.responseSource) >= 2:
+            suggestions_block = self.responseSource[1]
+            if isinstance(suggestions_block, list):
+                for item in suggestions_block:
+                    if isinstance(item, list) and len(item) > 0 and isinstance(item[0], str):
+                        searchSuggestions.append(item[0])
+
+        if not searchSuggestions:
+            def flatten_strings(obj):
+                if isinstance(obj, str):
+                    searchSuggestions.append(obj)
+                elif isinstance(obj, list):
+                    for v in obj:
+                        flatten_strings(v)
+                elif isinstance(obj, dict):
+                    for v in obj.values():
+                        flatten_strings(v)
+            flatten_strings(self.responseSource)
+
+        seen = set()
+        searchSuggestions = [x for x in searchSuggestions if x not in seen and not seen.add(x)]
+
         if mode == ResultMode.dict:
             return {'result': searchSuggestions}
         elif mode == ResultMode.json:
-            return json.dumps({'result': searchSuggestions}, indent=4)
+            return json.dumps({'result': searchSuggestions}, indent=4, ensure_ascii=False)
 
     def _get(self, query: str, mode: int = ResultMode.dict) -> Union[dict, str]:
         self._prepare_url(query)
@@ -61,24 +76,39 @@ class SuggestionsCore(RequestCore):
             self.headers["x-youtube-identity-token"] = token
 
     def __parseSource(self) -> None:
+        if not self.response or len(self.response.strip()) == 0:
+            raise Exception("Empty response from Google Suggest endpoint")
+
+        text = self.response.strip()
+
+        start_idx = text.find('(')
+        end_idx = text.rfind(')')
+
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            json_candidate = text[start_idx + 1:end_idx].strip()
+            try:
+                self.responseSource = json.loads(json_candidate)
+                return
+            except json.JSONDecodeError:
+                pass
+
         try:
-            start_idx = self.response.find('(')
-            end_idx = self.response.rfind(')')
-            
-            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-                json_str = self.response[start_idx + 1:end_idx]
-                self.responseSource = json.loads(json_str)
-            else:
-                try:
-                    self.responseSource = json.loads(self.response)
-                except:
-                    match = re.search(r'\[.*\]', self.response, re.DOTALL)
-                    if match:
-                        self.responseSource = json.loads(match.group())
-                    else:
-                        raise Exception('Could not find JSON in response through this query')
-        except Exception as e:
-            raise Exception(f'ERROR: Could not parse YouTube response. {str(e)}')
+            self.responseSource = json.loads(text)
+            if isinstance(self.responseSource, list):
+                return
+        except json.JSONDecodeError:
+            pass
+
+        match = re.search(r'\[.*\]', text, re.DOTALL)
+        if match:
+            try:
+                self.responseSource = json.loads(match.group(0))
+                return
+            except json.JSONDecodeError:
+                pass
+
+        preview = text[:300].replace('\n', ' ').replace('\r', '')
+        raise Exception(f"Could not extract JSON from Google Suggest response. Response preview: {preview} ...")
 
     def __makeRequest(self) -> None:
         request = self.syncGetRequest()
