@@ -43,7 +43,12 @@ class SuggestionsCore(RequestCore):
             extract_strings(self.responseSource)
 
         seen = set()
-        searchSuggestions = [x for x in searchSuggestions if not (x in seen or seen.add(x))]
+        unique = []
+        for x in searchSuggestions:
+            if x not in seen:
+                seen.add(x)
+                unique.append(x)
+        searchSuggestions = unique
 
         if mode == ResultMode.dict:
             return {'result': searchSuggestions}
@@ -61,7 +66,7 @@ class SuggestionsCore(RequestCore):
         return self._post_request_processing(mode)
 
     def _prepare_url(self, query: str):
-        self.url = 'https://clients1.google.com/complete/search' + '?' + urlencode({
+        self.url = 'https://clients1.google.com/complete/search?' + urlencode({
             'client': 'youtube',
             'hl': self.language,
             'gl': self.region,
@@ -76,8 +81,12 @@ class SuggestionsCore(RequestCore):
         self.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
             'Referer': 'https://www.youtube.com/',
+            'Origin': 'https://www.youtube.com',
             'Accept': '*/*',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8',
+            'Sec-Fetch-Site': 'cross-site',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Dest': 'empty',
         })
 
         token = os.environ.get("YTS_IDENTITY_TOKEN")
@@ -90,17 +99,18 @@ class SuggestionsCore(RequestCore):
 
         text = self.response.strip()
 
-        if '(' in text and ')' in text:
-            start = text.find('(')
-            end = text.rfind(')')
-            if start < end:
-                candidate = text[start + 1:end].strip()
-                try:
-                    self.responseSource = json.loads(candidate)
-                    return
-                except json.JSONDecodeError:
-                    pass
+        # 1. Most common: google.ac.h( [ ... ] )
+        start = text.find('(')
+        end = text.rfind(')')
+        if start != -1 and end != -1 and end > start:
+            candidate = text[start + 1:end].strip()
+            try:
+                self.responseSource = json.loads(candidate)
+                return
+            except json.JSONDecodeError:
+                pass
 
+        # 2. Raw JSON array
         try:
             parsed = json.loads(text)
             if isinstance(parsed, list):
@@ -109,7 +119,8 @@ class SuggestionsCore(RequestCore):
         except json.JSONDecodeError:
             pass
 
-        match = re.search(r'\[.*?\](?=\s|$)', text, re.DOTALL)
+        # 3. Extract outermost array (fallback)
+        match = re.search(r'\[.*\]', text, re.DOTALL | re.MULTILINE)
         if match:
             try:
                 self.responseSource = json.loads(match.group(0))
@@ -117,7 +128,8 @@ class SuggestionsCore(RequestCore):
             except json.JSONDecodeError:
                 pass
 
-        preview = text[:400].replace('\n', ' ').replace('\r', '')
+        # 4. If nothing worked → show preview for debugging
+        preview = text[:500].replace('\n', ' ').replace('\r', '')
         raise Exception(f"Failed to parse Google Suggest response. Preview: {preview} ...")
 
     def __makeRequest(self) -> None:
