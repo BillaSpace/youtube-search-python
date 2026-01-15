@@ -155,11 +155,25 @@ class SearchCore(RequestCore, ComponentHandler):
                 for shelfElement in self._getShelfComponent(element)['elements']:
                     self.resultComponents.append(
                         self._getVideoComponent(shelfElement, shelfTitle=self._getShelfComponent(element)['title']))
-            if richItemKey in element.keys() and findVideos:
+            if richItemKey in element.keys():
                 richItemElement = self._getValue(element, [richItemKey, 'content'])
-                ''' Initial fallback handling for VideosSearch '''
-                if videoElementKey in richItemElement.keys():
+                if videoElementKey in richItemElement.keys() and findVideos:
                     videoComponent = self._getVideoComponent(richItemElement)
                     self.resultComponents.append(videoComponent)
+                if channelElementKey in richItemElement.keys() and findChannels:
+                    channelComponent = self._getChannelComponent(richItemElement)
+                    self.resultComponents.append(channelComponent)
+                if playlistElementKey in richItemElement.keys() and findPlaylists:
+                    playlistComponent = self._getPlaylistComponent(richItemElement)
+                    self.resultComponents.append(playlistComponent)
+                if "lockupViewModel" in richItemElement.keys():
+                    lockupComponent = self._getLockupComponent(richItemElement, findVideos, findChannels, findPlaylists)
+                    if lockupComponent:
+                        self.resultComponents.append(lockupComponent)
+
+            if "lockupViewModel" in element.keys():
+                lockupComponent = self._getLockupComponent(element, findVideos, findChannels, findPlaylists)
+                if lockupComponent:
+                    self.resultComponents.append(lockupComponent)
             if len(self.resultComponents) >= self.limit:
                 break
