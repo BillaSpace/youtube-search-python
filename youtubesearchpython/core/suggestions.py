@@ -24,26 +24,26 @@ class SuggestionsCore(RequestCore):
         self.__parseSource()
         
         if isinstance(self.responseSource, list) and len(self.responseSource) >= 2:
-            suggestions_block = self.responseSource[1]
-            if isinstance(suggestions_block, list):
-                for item in suggestions_block:
+            block = self.responseSource[1]
+            if isinstance(block, list):
+                for item in block:
                     if isinstance(item, list) and len(item) > 0 and isinstance(item[0], str):
                         searchSuggestions.append(item[0])
 
         if not searchSuggestions:
-            def flatten_strings(obj):
+            def extract_strings(obj):
                 if isinstance(obj, str):
                     searchSuggestions.append(obj)
                 elif isinstance(obj, list):
                     for v in obj:
-                        flatten_strings(v)
+                        extract_strings(v)
                 elif isinstance(obj, dict):
                     for v in obj.values():
-                        flatten_strings(v)
-            flatten_strings(self.responseSource)
+                        extract_strings(v)
+            extract_strings(self.responseSource)
 
         seen = set()
-        searchSuggestions = [x for x in searchSuggestions if x not in seen and not seen.add(x)]
+        searchSuggestions = [x for x in searchSuggestions if not (x in seen or seen.add(x))]
 
         if mode == ResultMode.dict:
             return {'result': searchSuggestions}
@@ -62,44 +62,54 @@ class SuggestionsCore(RequestCore):
 
     def _prepare_url(self, query: str):
         self.url = 'https://clients1.google.com/complete/search' + '?' + urlencode({
+            'client': 'youtube',
             'hl': self.language,
             'gl': self.region,
             'q': query,
-            'client': 'youtube',
-            'gs_ri': 'youtube',
             'ds': 'yt',
+            'gs_ri': 'youtube',
         })
+
+        if not hasattr(self, 'headers') or self.headers is None:
+            self.headers = {}
+
+        self.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+            'Referer': 'https://www.youtube.com/',
+            'Accept': '*/*',
+            'Accept-Language': 'en-US,en;q=0.9',
+        })
+
         token = os.environ.get("YTS_IDENTITY_TOKEN")
         if token:
-            if not hasattr(self, "headers") or self.headers is None:
-                self.headers = {}
             self.headers["x-youtube-identity-token"] = token
 
     def __parseSource(self) -> None:
-        if not self.response or len(self.response.strip()) == 0:
+        if not self.response or not self.response.strip():
             raise Exception("Empty response from Google Suggest endpoint")
 
         text = self.response.strip()
 
-        start_idx = text.find('(')
-        end_idx = text.rfind(')')
-
-        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            json_candidate = text[start_idx + 1:end_idx].strip()
-            try:
-                self.responseSource = json.loads(json_candidate)
-                return
-            except json.JSONDecodeError:
-                pass
+        if '(' in text and ')' in text:
+            start = text.find('(')
+            end = text.rfind(')')
+            if start < end:
+                candidate = text[start + 1:end].strip()
+                try:
+                    self.responseSource = json.loads(candidate)
+                    return
+                except json.JSONDecodeError:
+                    pass
 
         try:
-            self.responseSource = json.loads(text)
-            if isinstance(self.responseSource, list):
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                self.responseSource = parsed
                 return
         except json.JSONDecodeError:
             pass
 
-        match = re.search(r'\[.*\]', text, re.DOTALL)
+        match = re.search(r'\[.*?\](?=\s|$)', text, re.DOTALL)
         if match:
             try:
                 self.responseSource = json.loads(match.group(0))
@@ -107,8 +117,8 @@ class SuggestionsCore(RequestCore):
             except json.JSONDecodeError:
                 pass
 
-        preview = text[:300].replace('\n', ' ').replace('\r', '')
-        raise Exception(f"Could not extract JSON from Google Suggest response. Response preview: {preview} ...")
+        preview = text[:400].replace('\n', ' ').replace('\r', '')
+        raise Exception(f"Failed to parse Google Suggest response. Preview: {preview} ...")
 
     def __makeRequest(self) -> None:
         request = self.syncGetRequest()
