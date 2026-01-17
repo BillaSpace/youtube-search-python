@@ -1,8 +1,8 @@
-# Changelog
+# Changelogs
 
 All notable changes to this project will be documented in this file.
 
-## [2.0.0] - 2026-01-15
+## [2.0.0] - 2026-01-18
 
 ### 🎉 Major Refactoring Release
 
@@ -12,11 +12,11 @@ All notable changes to this project will be documented in this file.
 - 📚 **Professional README** - Complete rewrite with extensive examples
 - 📝 **CHANGELOG** - Version tracking
 - 🌍 **Regional examples** - Indian and Myanmar content examples
+-  Channel , Playlist , Comments , Recommendations , Suggestions 
 
 ### Changed
 - 📦 **Module structure**: async operations now in `youtubesearchpython.future`
 - 📈 **Version**: 1.6.6+master → 2.0.0
-- 📖 **Documentation**: Professional README with real-world examples
 
 ### Fixed
 - 🐛 **Duplicate method**: Removed duplicate `__enhanceThumbnailsAsync` in video.py
@@ -33,7 +33,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [2.0.0] - Previous Release
+## [2.0.0] - Current Release
 
 ### Added
 - 📱 ANDROID client as default
@@ -41,11 +41,11 @@ All notable changes to this project will be documented in this file.
 - 🔄 Enhanced stream URL handling
 
 ### Changed
-- 🔢 Updated client versions
+- 🔢 Updated Latest web client versions & parsing
 - ⚙️ httpx 0.28+ compatibility
 
 ### Fixed
-- Multiple bug fixes across modules
+- Multiple bug fixes & code cleaned for rediabilty across modules
 
 ---
 
