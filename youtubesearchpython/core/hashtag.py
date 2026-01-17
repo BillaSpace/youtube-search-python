@@ -3,7 +3,6 @@ import json
 from typing import Union
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-
 import httpx
 
 from youtubesearchpython.core.constants import *
