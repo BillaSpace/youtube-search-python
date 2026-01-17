@@ -252,7 +252,7 @@ This library is not affiliated with YouTube or Google Inc. It uses YouTube's int
 ---
 ## 🔁 Credits
 
-- **Current Developer:** [Prakhar](https://github.com/BillaSpace)contributors
+- **Current Developer:** [Prakhar](https://github.com/BillaSpace)
 - **Old Author:** [Hitesh Kumar Saini](https://github.com/alexmercerind) 
 
 ---
@@ -262,7 +262,7 @@ This library is not affiliated with YouTube or Google Inc. It uses YouTube's int
 
 - If you find this library useful, please consider to support the developer by giving a fork & ✳️ star on [GitHub](https://github.com/BillaSpace/youtube-search-python) , 
 
-- if i found this library is really useful n necessary for everyone i'll release it on [pypi](https://pypi.org/project/yt-search-python) as -;
+- if i found this library is really useful n necessary for everyone i'll keep maintaining on [pypi](https://pypi.org/project/yt-search-python) as -;
 `yt-search-python`
 
 ---
