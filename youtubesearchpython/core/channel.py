@@ -29,12 +29,26 @@ class ChannelCore(RequestCore):
             self.data["continuation"] = self.continuation
 
     def playlist_parse(self, i) -> dict:
+        if "lockupViewModel" in i:
+            lockup = i["lockupViewModel"]
+            contentId = getValue(lockup, ["contentId"])
+            return {
+                "id": contentId,
+                "thumbnails": getValue(lockup, ["contentImage", "collectionThumbnailViewModel", "primaryThumbnail", "thumbnailViewModel", "image", "sources"]),
+                "title": getValue(lockup, ["metadata", "lockupMetadataViewModel", "title", "content"]),
+                "videoCount": None,
+                "lastEdited": None,
+                "link": 'https://www.youtube.com/playlist?list=' + contentId if contentId else None
+            }
+        
+        # GridPlaylistRenderer fallback
+        target = i.get("gridPlaylistRenderer", i)
         return {
-            "id": getValue(i, ["playlistId"]),
-            "thumbnails": getValue(i, ["thumbnail", "thumbnails"]),
-            "title": getValue(i, ["title", "runs", 0, "text"]),
-            "videoCount": getValue(i, ["videoCountShortText", "simpleText"]),
-            "lastEdited": getValue(i, ["publishedTimeText", "simpleText"]),
+            "id": getValue(target, ["playlistId"]),
+            "thumbnails": getValue(target, ["thumbnail", "thumbnails"]),
+            "title": getValue(target, ["title", "runs", 0, "text"]),
+            "videoCount": getValue(target, ["videoCountShortText", "simpleText"]),
+            "lastEdited": getValue(target, ["publishedTimeText", "simpleText"]),
         }
 
     def parse_response(self):
@@ -57,23 +71,31 @@ class ChannelCore(RequestCore):
         tabData: dict = {}
         playlists: list = []
 
-        for tab in getValue(response, ["contents", "twoColumnBrowseResultsRenderer", "tabs"]):
-            tab: dict
-            title = getValue(tab, ["tabRenderer", "title"])
-            if title == "Playlists":
-                playlist = getValue(tab,
-                                    ["tabRenderer", "content", "sectionListRenderer", "contents", 0, "itemSectionRenderer",
-                                     "contents", 0, "gridRenderer", "items"])
-                if playlist is not None and getValue(playlist, [0, "gridPlaylistRenderer"]):
-                    for i in playlist:
-                        if getValue(i, ["continuationItemRenderer"]):
-                            self.continuation = getValue(i, ["continuationItemRenderer", "continuationEndpoint",
-                                                             "continuationCommand", "token"])
-                            break
-                        i: dict = i["gridPlaylistRenderer"]
-                        playlists.append(self.playlist_parse(i))
-            elif title == "About":
-                tabData = tab["tabRenderer"]
+        tabs = getValue(response, ["contents", "twoColumnBrowseResultsRenderer", "tabs"])
+        if tabs:
+            for tab in tabs:
+                tab: dict
+                title = getValue(tab, ["tabRenderer", "title"])
+                
+                # Check for playlists in any tab content (often Home tab has shelves)
+                content = getValue(tab, ["tabRenderer", "content", "sectionListRenderer", "contents"])
+                if content:
+                    for section in content:
+                        items = getValue(section, ["itemSectionRenderer", "contents", 0, "gridRenderer", "items"])
+                        if not items:
+                            items = getValue(section, ["itemSectionRenderer", "contents", 0, "shelfRenderer", "content", "horizontalListRenderer", "items"])
+                        
+                        if items:
+                             for i in items:
+                                if getValue(i, ["continuationItemRenderer"]):
+                                    self.continuation = getValue(i, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
+                                    continue
+                                
+                                if "gridPlaylistRenderer" in i or "lockupViewModel" in i:
+                                    playlists.append(self.playlist_parse(i))
+                
+                if title == "About":
+                    tabData = tab["tabRenderer"]
 
         metadata = getValue(tabData,
                             ["content", "sectionListRenderer", "contents", 0, "itemSectionRenderer", "contents", 0,
@@ -109,13 +131,15 @@ class ChannelCore(RequestCore):
         self.continuation = None
 
         response = getValue(response, ["onResponseReceivedActions", 0, "appendContinuationItemsAction", "continuationItems"])
-        for i in response:
-            if getValue(i, ["continuationItemRenderer"]):
-                self.continuation = getValue(i, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
-                break
-            elif getValue(i, ['gridPlaylistRenderer']):
-                self.result["playlists"].append(self.playlist_parse(getValue(i, ['gridPlaylistRenderer'])))
-            # TODO: Handle other types like gridShowRenderer
+        if response:
+            for i in response:
+                if getValue(i, ["continuationItemRenderer"]):
+                    self.continuation = getValue(i, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
+                    break
+                elif getValue(i, ['gridPlaylistRenderer']):
+                    self.result["playlists"].append(self.playlist_parse(getValue(i, ['gridPlaylistRenderer'])))
+                elif getValue(i, ['lockupViewModel']):
+                    self.result["playlists"].append(self.playlist_parse(i))
 
     async def async_next(self):
         if not self.continuation:
