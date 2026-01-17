@@ -1,8 +1,8 @@
-# Quick Documentation
+# Quick Documentations
 
 Detailed documentation for `yt-search-python`.
 
-> **Note:** For complete usage examples with sample outputs, see [Examples](https://github.com/BillaSpace/youtube-search-python/docs/)
+> **Note:** For complete usage examples with sample outputs, Checkout  full [Docs](https://github.com/BillaSpace/youtube-search-python/docs/)
 
 ## Core Classes
 
