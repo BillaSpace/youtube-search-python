@@ -13,7 +13,13 @@ class RequestCore:
         timeout = self.timeout if self.timeout is not None else 10
         return httpx.post(
             self.url,
-            headers={"User-Agent": userAgent},
+            headers={
+                "User-Agent": userAgent,
+                "Accept": "*/*",
+                "Content-Type": "application/json",
+                "Origin": "https://www.youtube.com",
+                "Referer": "https://www.youtube.com/",
+            },
             json=self.data,
             timeout=timeout,
         )
@@ -21,8 +27,21 @@ class RequestCore:
     async def asyncPostRequest(self) -> httpx.Response:
         timeout = self.timeout if self.timeout is not None else 10
         async with httpx.AsyncClient() as client:
-            r = await client.post(self.url, headers={"User-Agent": userAgent}, json=self.data, timeout=timeout)
+            r = await client.post(
+                self.url,
+                headers={
+                    "User-Agent": userAgent,
+                    "Accept": "*/*",
+                    "Content-Type": "application/json",
+                    "Origin": "https://www.youtube.com",
+                    "Referer": "https://www.youtube.com/",
+                },
+                json=self.data,
+                timeout=timeout
+            )
             return r
+
+    # a special thanks to https://github.com/CertifiedCoder For his work in requests.py
 
     def syncGetRequest(self) -> httpx.Response:
         timeout = self.timeout if self.timeout is not None else 10
