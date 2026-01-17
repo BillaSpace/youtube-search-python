@@ -84,10 +84,15 @@ class PlaylistCore(RequestCore):
     def prepare_first_request(self):
         self.url = self.url.strip('/')
 
-        match = re.search(r"(?<=list=)([a-zA-Z0-9+/=_-]+)", self.url)
-        if match:
-            id = match.group()
+        # Check if input is a URL
+        if 'youtube.com' in self.url or 'youtu.be' in self.url:
+            match = re.search(r"(?<=list=)([a-zA-Z0-9+/=_-]+)", self.url)
+            if match:
+                id = match.group()
+            else:
+                id = self.url
         else:
+            # Assume input is an ID
             id = self.url
         
         browseId = "VL" + id if not id.startswith("VL") else id
@@ -139,7 +144,8 @@ class PlaylistCore(RequestCore):
             raise YouTubeParseError(f'Failed to parse YouTube playlist response: {str(e)}')
 
     def __getComponents(self) -> None:
-        #print(self.responseSource)
+        if "sidebar" not in self.responseSource:
+            raise YouTubeParseError("sidebar missing from response")
         sidebar = self.responseSource["sidebar"]["playlistSidebarRenderer"]["items"]
         inforenderer = sidebar[0]["playlistSidebarPrimaryInfoRenderer"]
         channel_details_available = len(sidebar) != 1
@@ -205,7 +211,7 @@ class PlaylistCore(RequestCore):
                                                ['onResponseReceivedActions', 0, 'appendContinuationItemsAction',
                                                 'continuationItems'])
         if continuationElements is None:
-            # YouTube Backend issue - See https://github.com/alexmercerind/youtube-search-python/issues/157
+            # YouTube Backend issue outdated but still worth it - See https://github.com/alexmercerind/youtube-search-python/issues/157
             return
         for videoElement in continuationElements:
             if playlistVideoKey in videoElement.keys():
