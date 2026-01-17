@@ -137,7 +137,7 @@ result = sug.get('Harry Styles')
 ```python
 from youtubesearchpython import Video
 
-video = Video.get('https://youtu.be/7bj_2x-IoRE')
+video = Video.get('https://youtu.be/8of5w7RgcTc?si=_jCtUd2DkVMn06Zm ko')
 ```
 
 **Output:** Returns complete video information including title, description, views, formats, etc.
@@ -158,8 +158,8 @@ playlist = Playlist.get('https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmsW46
 ### Example 1: Get Comments
 ```python
 from youtubesearchpython import Comments
-
-comments = Comments.get('VIDEO_ID')
+# video_id 
+comments = Comments.get('8of5w7RgcTc')
 ```
 
 **Output:** Returns list of comments with author information, content, likes, and reply counts.
