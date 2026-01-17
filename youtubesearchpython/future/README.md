@@ -1,17 +1,18 @@
-# youtube-search-python (__future__) – Async Usage Guide
+## youtube-search-python 
+- now as :
+`yt-search-python`  
 
-**⚠️ Experimental:**  
-This library extracts YouTube data **without YouTube Data API v3**.  
-It depends on public YouTube endpoints and may break anytime due to internal changes.  
-Maintainer: **[Prakhar Shukla](https://github.com/BillaSpace)**
+- future Async Usage Guide
 
+## For full docs checkout 
+[examples](https://github.com/BillaSpace/youtube-search-python/docs/)
 ---
 
-# 🔍 Async Search Usage
+## 🔍 Async Search Usage
 
 ## Search – videos + channels + playlists
 ```python
-from youtubesearchpython.__future__ import Search
+from youtubesearchpython.future import Search
 
 search = Search("lofi music", limit=5)
 result = await search.next()
@@ -20,7 +21,7 @@ print(result)
 
 ## VideosSearch – only videos
 ```python
-from youtubesearchpython.__future__ import VideosSearch
+from youtubesearchpython.future import VideosSearch
 
 search = VideosSearch("anime edits", limit=10)
 result = await search.next()
@@ -29,7 +30,7 @@ print(result)
 
 ## ChannelsSearch – only channels
 ```python
-from youtubesearchpython.__future__ import ChannelsSearch
+from youtubesearchpython.uture import ChannelsSearch
 
 search = ChannelsSearch("MrBeast", limit=3)
 result = await search.next()
@@ -38,7 +39,7 @@ print(result)
 
 ## PlaylistsSearch – only playlists
 ```python
-from youtubesearchpython.__future__ import PlaylistsSearch
+from youtubesearchpython.future import PlaylistsSearch
 
 search = PlaylistsSearch("best english songs", limit=3)
 result = await search.next()
@@ -47,7 +48,7 @@ print(result)
 
 ## CustomSearch – filtered search via `searchPreferences`
 ```python
-from youtubesearchpython.__future__ import CustomSearch
+from youtubesearchpython.future import CustomSearch
 
 sp = "EgQQARgB"  # example filter: uploaded last hour
 search = CustomSearch("gaming", searchPreferences=sp, limit=5)
@@ -57,7 +58,7 @@ print(result)
 
 ## ChannelSearch – search inside a channel
 ```python
-from youtubesearchpython.__future__ import ChannelSearch
+from youtubesearchpython.future import ChannelSearch
 
 channel_id = "UCZFWPqqPkFlNwIxcpsLOwew"
 search = ChannelSearch("watermelon", browseId=channel_id)
@@ -75,7 +76,7 @@ print(result)
 
 ## Example: Get stream URLs
 ```python
-from youtubesearchpython.__future__ import StreamURLFetcher, Video
+from youtubesearchpython.future import StreamURLFetcher, Video
 
 # 1. Create fetcher
 fetcher = StreamURLFetcher()
@@ -121,13 +122,21 @@ print(all_streams)
 
 ---
 
-# 📝 Fixation Notes
+## what's new  v2.0.0 ?
+- Now ✳️ Recommendations Suggestions, Comments Are Asynced too
+- Added ✳️ asynced Playlist & Channel Search method classes 
+- Fixed Youtube Video Transcripts will need proxy or cookies in netscape format
 - Reuse a single `StreamURLFetcher()` instance for multiple URLs.
-- Avoid calling `getJavaScript()` more than once.
+- Avoid calling `getJavaScript()` more than once & use cookies refer to docs.
 - Extraction speed is fast because **no extra network calls** are made when deciphering.
 
 ---
+**⚠️ Experimental:**  
+This library extracts YouTube data **without YouTube Data API v3**.  
+It depends on public YouTube endpoints and may break anytime due to internal changes.  
 
-# 👤 Maintainer
+
+
+## 👤 Dev
 **Prakhar Shukla**  
-GitHub: https://github.com/BillaSpace
+[GitHub:](https://github.com/BillaSpace)
