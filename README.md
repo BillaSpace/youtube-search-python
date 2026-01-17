@@ -1,19 +1,21 @@
-# 🎥 YouTube Search Python v2.0.0
+# YouTube Search Python v2.0.0 
+- now known as :-
+`yt-search-python`
 
 <div align="center">
 
-![YouTube Search Python](https://files.catbox.moe/rbt2je.jpg)
+![YouTube Search Python](https://files.catbox.moe/m25e74.jpg)
 
 [![GitHub Stars](https://img.shields.io/github/stars/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/network)
-[![Python Version](https://img.shields.io/badge/python-3.7-10+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/github/license/BillaSpace/youtube-search-python?style=for-the-badge)](https://github.com/BillaSpace/youtube-search-python/blob/main/LICENSE)
 
 **Search YouTube without the YouTube Data API v3**
 
-A professional, actively maintained Python library for searching YouTube content—completely free and without API quotas.
+A professional, Modern & actively maintained Python library for searching YouTube content—completely free and without youtube data API quotas.
 
-[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Examples](#-examples) • [Documentation](#-documentation)
+[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Examples](#-examples) • [Testing](#-testing)
 
 </div>
 
@@ -22,12 +24,12 @@ A professional, actively maintained Python library for searching YouTube content
 ## ✨ Features
 
 - 🚀 **No API Key Required** - Search YouTube without quotas or rate limits
-- ⚡ **Fast & Reliable** - Optimized for performance
+- ⚡ **Fast & Reliable** - Optimized for performance with modern httpx
 - 🔄 **Sync & Async Support** - Use synchronous or asynchronous methods
 - 📦 **Rich Metadata** - Get videos, channels, playlists, comments, transcripts & more
 - 🎯 **Advanced Filtering** - Sort by date, views, duration, and more
 - 🌐 **Multi-Region** - Search with language and region preferences
-- 🔧 **Modern** - Compatible with Python 3.7+ and httpx 0.28+
+- 🔧 **Modern** - Compatible with Python 3.7+ to current and httpx 0.28+
 - 💪 **Type Hints** - Full type annotations for better IDE support
 
 ---
@@ -47,49 +49,22 @@ git+https://github.com/BillaSpace/youtube-search-python.git
 ```
 
 Then:
+
 ```bash
 pip install -r requirements.txt
-```
-
-### Clone & Install
-
-```bash
-git clone https://github.com/BillaSpace/youtube-search-python.git
-cd youtube-search-python
-pip install -e .
 ```
 
 ---
 
 ## 🚀 Quick Start
 
-### Synchronous Search
+### Search for Videos
 
 ```python
 from youtubesearchpython import VideosSearch
 
-# Search for videos
-videos = VideosSearch('Kesariya song', limit=5)
-results = videos.result()
-
-for video in results['result']:
-    print(f"{video['title']} - {video['link']}")
-```
-
-### Asynchronous Search
-
-```python
-import asyncio
-from youtubesearchpython.future import VideosSearch
-
-async def search():
-    videos = VideosSearch('Hindi songs', limit=5)
-    results = await videos.next()
-    
-    for video in results['result']:
-        print(f"{video['title']} - {video['link']}")
-
-asyncio.run(search())
+search = VideosSearch('NoCopyrightSounds', limit=10)
+print(search.result())
 ```
 
 ### Get Video Information
@@ -97,395 +72,203 @@ asyncio.run(search())
 ```python
 from youtubesearchpython import Video
 
-# Get complete video details
-video = Video.get('https://youtu.be/7bj_2x-IoRE')
-print(f"Title: {video['title']}")
-print(f"Views: {video['viewCount']['text']}")
-print(f"Duration: {video['duration']['text']}")
+video = Video.get('https://www.youtube.com/watch?v=aqz-KE-bpKQ')
+print(video['title'])
+print(video['viewCount'])
 ```
 
----
+### Async Support
 
-## 📚 Examples
-
-### 1. Search for Videos
-
-#### Synchronous
-```python
-from youtubesearchpython import VideosSearch
-
-# Basic search
-search = VideosSearch('Bollywood songs 2024', limit=10)
-print(search.result())
-
-# With language and region
-search = VideosSearch('Myanmar music', limit=5, language='en', region='MM')
-results = search.result()
-```
-
-#### Asynchronous
 ```python
 import asyncio
-from youtubesearchpython.future import VideosSearch
+from youtubesearchpython.future import VideosSearch, Video
 
-async def search_videos():
-    search = VideosSearch('Arijit Singh songs', limit=10)
-    results = await search.next()
+async def main():
+    search = VideosSearch('Python Tutorial', limit=5)
+    result = await search.next()
+    print(result)
     
-    for video in results['result']:
-        print(f"{video['title']}")
-        print(f"Views: {video['viewCount']['text']}")
-        print(f"Link: {video['link']}\n")
+    video = await Video.get('video_id_here')
+    print(video)
 
-asyncio.run(search_videos())
+asyncio.run(main())
 ```
 
 ---
 
-### 2. Search for Channels
+## 📚 Documentation
+
+### Core Documentation
+- **[API Reference](docs.md)** - Complete API documentation with all classes and methods
+- **[Usage Examples](docs/examples/)** - Comprehensive examples for all features:
+  - [Search Examples](docs/examples/search_examples.md) - All search classes with filters
+  - [Video & Extras Examples](docs/examples/extras_examples.md) - Video, Playlist, Comments, etc.
+  - [Stream URL Examples](docs/examples/stream_examples.md) - Direct stream URL fetching
+
+### Key Classes
+
+#### Search Classes
+- `VideosSearch` - Search for videos
+- `ChannelsSearch` - Search for channels
+- `PlaylistsSearch` - Search for playlists
+- `CustomSearch` - Search with custom filters
+- `ChannelSearch` - Search within a specific channel
+
+#### Content Classes
+- `Video` - Get video information and formats
+- `Playlist` - Get playlist information and videos
+- `Channel` - Get channel information
+- `Comments` - Get video comments
+- `Transcript` - Get video transcripts/captions
+- `Suggestions` - Get search suggestions
+- `Recommendations` - Get video recommendations
+- `Hashtag` - Get videos by hashtag
+
+#### Utility Classes
+- `StreamURLFetcher` - Get direct stream URLs with multiple formats
+- `ResultMode` - Control output format (dict/json)
+
+---
+
+## 💡 Examples
+
+### Advanced Search with Filters
 
 ```python
-from youtubesearchpython import ChannelsSearch
+from youtubesearchpython import CustomSearch, VideoSortOrder
 
-# Search for channels
-channels = ChannelsSearch('T-Series', limit=5)
-results = channels.result()
-
-for channel in results['result']:
-    print(f"{channel['title']} - {channel['subscribers']}")
+# Search videos sorted by view count
+search = CustomSearch('Python', VideoSortOrder.viewCount, limit=10)
+print(search.result())
 ```
 
----
-
-### 3. Search for Playlists
-
-```python
-from youtubesearchpython import PlaylistsSearch
-
-# Search for playlists
-playlists = PlaylistsSearch('Best of Arijit Singh', limit=5)
-results = playlists.result()
-
-for playlist in results['result']:
-    print(f"{playlist['title']} - {playlist['videoCount']} videos")
-```
-
----
-
-### 4. Get Video Details
-
-```python
-from youtubesearchpython import Video
-
-# Using URL
-video = Video.get('https://www.youtube.com/watch?v=7bj_2x-IoRE')
-
-# Using video ID
-video = Video.get('7bj_2x-IoRE')
-
-# Get only metadata (faster)
-info = Video.getInfo('7bj_2x-IoRE')
-
-# Get only stream formats
-formats = Video.getFormats('7bj_2x-IoRE')
-```
-
----
-
-### 5. Get Playlist Videos
+### Get Playlist Videos
 
 ```python
 from youtubesearchpython import Playlist
 
-playlist = Playlist('https://www.youtube.com/playlist?list=PLAYLIST_ID')
-
-print(f'Videos: {len(playlist.videos)}')
-
-# Get all videos (pagination)
-while playlist.hasMoreVideos:
-    playlist.getNextVideos()
-    print(f'Total videos: {len(playlist.videos)}')
+# Works with both URLs and IDs
+playlist = Playlist.get('PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK')
+print(f"Playlist: {playlist['title']}")
+print(f"Videos: {len(playlist['videos'])}")
 ```
 
----
-
-### 6. Advanced Search with Filters
-
-```python
-from youtubesearchpython import CustomSearch, VideoSortOrder, VideoUploadDateFilter
-
-# Sort by view count
-search = CustomSearch('Indian music', VideoSortOrder.viewCount, limit=10)
-
-# Filter by upload date
-search = CustomSearch('Latest songs', VideoUploadDateFilter.thisWeek, limit=5)
-
-results = search.result()
-```
-
-**Available Filters:**
-
-| Filter | Options |
-|--------|---------|
-| **Sort Order** | `relevance`, `uploadDate`, `viewCount`, `rating` |
-| **Upload Date** | `lastHour`, `today`, `thisWeek`, `thisMonth`, `thisYear` |
-| **Duration** | `short` (<4min), `long` (>20min) |
-
----
-
-### 7. Search Pagination
-
-```python
-from youtubesearchpython import VideosSearch
-
-search = VideosSearch('Kesariya song', limit=5)
-
-# Page 1
-page1 = search.result()
-print(f"Page 1: {len(page1['result'])} videos")
-
-# Next page
-search.next()
-page2 = search.result()
-print(f"Page 2: {len(page2['result'])} videos")
-```
-
----
-
-### 8. Get Comments
+### Fetch Comments
 
 ```python
 from youtubesearchpython import Comments
 
-comments = Comments('VIDEO_ID')
-print(f"Comments: {len(comments.comments['result'])}")
-
-# Get more comments
-while comments.hasMoreComments:
-    comments.getNextComments()
-    print(f"Total: {len(comments.comments['result'])}")
+comments = Comments.get('https://www.youtube.com/watch?v=aqz-KE-bpKQ')
+for comment in comments['result'][:5]:
+    print(f"{comment['author']}: {comment['content']}")
 ```
 
----
-
-### 9. Get Transcripts
-
-```python
-from youtubesearchpython import Transcript
-
-# Get transcript
-transcript = Transcript.get('VIDEO_URL')
-
-# Get in different language
-if transcript and 'languages' in transcript:
-    transcript_hindi = Transcript.get('VIDEO_URL', transcript['languages'][1]['params'])
-```
-
----
-
-### 10. Search Suggestions
+### Get Search Suggestions
 
 ```python
 from youtubesearchpython import Suggestions
 
-suggestions = Suggestions(language='en', region='IN')
-results = suggestions.get('Arijit Singh')
-print(results)
+suggestions = Suggestions.get('Arijit Singh', language='en', region='US')
+print(suggestions['result'])
 ```
+
+For more examples, see the [examples directory](docs/examples/).
 
 ---
 
-## 🔄 Async vs Sync
+## 🧪 Testing
 
-### When to Use Async?
+### Wanna Quick Test ?
 
-✅ **Use Async (`youtubesearchpython.future`) when:**
-- Building web apps (FastAPI, aiohttp)
-- Making multiple concurrent searches
-- Integrating with async frameworks
-- Need maximum performance
-
-✅ **Use Sync (`youtubesearchpython`) when:**
-- Simple scripts
-- Learning/prototyping
-- Don't need concurrency
-- Simpler code is priority
-
-### Import Comparison
-
-```python
-# Synchronous
-from youtubesearchpython import VideosSearch, Video, Playlist
-
-# Asynchronous
-from youtubesearchpython.future import VideosSearch, Video, Playlist
-```
-
----
-
-## 🌍 Regional Search Examples
-
-### Search Indian Content
-
-```python
-from youtubesearchpython import VideosSearch
-
-# Hindi songs
-search = VideosSearch('Kesariya', limit=5, language='hi', region='IN')
-
-# Bollywood music
-search = VideosSearch('Bollywood hits 2024', limit=10, region='IN')
-```
-
-### Search unicode languages Content
-
-```python
-from youtubesearchpython import VideosSearch
-
-# Myanmar music
-search = VideosSearch('myanmar love song', limit=5, region='MM')
-
-# Burmese content
-search = VideosSearch('burmese music', limit=10, language='my', region='MM')
-```
-
----
-
-## 🎯 Tested With
-
-✅ **Indian Content**
-- Kesariya (Brahmastra)
-- Arijit Singh songs
-- T-Series channel
-- Bollywood playlists
-
-✅ **Regional Content**  
-- works on any server ip 
-- supports almost all languages
-- Regional artists
-
-✅ **Global Content**
-- International music
-- Multi-language videos
-- Various regions
-
----
-
-## 🛠️ Advanced Usage
-
-### Custom Timeout
-
-```python
-from youtubesearchpython import VideosSearch
-
-# Set 30 second timeout
-search = VideosSearch('query', limit=10, timeout=30)
-```
-
-###Result Modes
-
-```python
-from youtubesearchpython import ResultMode, VideosSearch
-
-# Dictionary (default)
-results = search.result(mode=ResultMode.dict)
-
-# JSON string
-results_json = search.result(mode=ResultMode.json)
-```
-
-### Channel-Specific Search
-
-```python
-from youtubesearchpython import ChannelSearch
-
-# Search within a specific channel
-search = ChannelSearch('song name', 'CHANNEL_ID')
-results = search.result()
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**1. No results found**
-- Try different search terms
-- Check region/language settings
-- Verify internet connection
-
-**2. Timeout errors**
-```python
-# Increase timeout
-search = VideosSearch('query', timeout=60)
-```
-
-**3. Import errors**
 ```bash
-# Reinstall
-pip install --force-reinstall git+https://github.com/BillaSpace/youtube-search-python.git
+cd tests
+python3 full_execution.py
 ```
+
+This comprehensive test suite covers:
+- ✅ All search classes (Videos, Channels, Playlists, Custom)
+- ✅ Content retrieval (Video, Playlist, Channel)
+- ✅ Social features (Comments, Recommendations, Suggestions)
+- ✅ Advanced features (StreamURLFetcher, Transcript)
+- ✅ Both synchronous and asynchronous methods
+
+### Test Documentation
+See [tests/README.md](tests/README.md) for detailed testing information.
 
 ---
 
-## 📝 Changelog
+## 🔧 Advanced Features
 
-### Version 2.0.0 (Latest)
-- ✨ Renamed async module to `future` for clarity from `__future__`
-- 🐛 Fixed duplicate method in youtubesearchpython/core/video.py
-- 🧪 Comprehensive testing made for all regions 
-- 📚 Completely rewritten classes with its pageRendrers
-- ⚡ Improved stability and performance
-- 📱 ANDROID client as default
-- 🔄 Enhanced stream URL handling
-- ⚙️ httpx 0.28+ compatibility
-- 🐛 Multiple bug fixes specially async v/s sync messups
+### Pagination
+
+```python
+search = VideosSearch('Python', limit=10)
+print(search.result())
+
+# Get next page
+search.next()
+print(search.result())
+```
+
+### Language & Region
+
+```python
+search = VideosSearch('Music', limit=10, language='es', region='ES')
+```
+
+### Custom Filters
+
+Available filters:
+- **Upload Date**: `VideoUploadDateFilter.lastHour`, `.today`, `.thisWeek`, `.thisMonth`, `.thisYear`
+- **Duration**: `VideoDurationFilter.short`, `.long`
+- **Sort Order**: `VideoSortOrder.relevance`, `.uploadDate`, `.viewCount`, `.rating`
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
+Contributions are welcome! Please feel free to submit a Pull Request.
+
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
-## 📄 License
+## 📝 License
 
-MIT License - see [LICENSE](LICENSE) file
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
+## ⚠️ Disclaimer
+
+This library is not affiliated with YouTube or Google Inc. It uses YouTube's internal API which may change without notice. Use responsibly and in accordance with YouTube's Terms of Content usage and distribution Services.
+
+---
 ## 🙏 Credits
 
-- **Original Author:** [Hitesh Kumar Saini](https://github.com/alexmercerind)
-- **Maintainer:** [Prakhar](https://github.com/BillaSpace)
-- **Contributors:** Community contributors
+- **Current Developer:** [Prakhar](https://github.com/BillaSpace)contributors
+- **Old Author:** [Hitesh Kumar Saini](https://github.com/alexmercerind) 
 
 ---
 
-## ⭐ Support
 
-If this project helped you, please ⭐ star it on [GitHub](https://github.com/BillaSpace/youtube-search-python)!
+## 🌟 Support & Future of the Library 
 
----
+- If you find this library useful, please consider to support the developer by giving a fork & ✳️ star on [GitHub](https://github.com/BillaSpace/youtube-search-python) , 
 
-## 📧 Contact
+- if i found this library is really useful n necessary for everyone i'll release it on [pypi](https://pypi.org/project/yt-search-python) as -;
+`yt-search-python`
 
-- **Issues:** [GitHub Issues](https://github.com/BillaSpace/youtube-search-python/issues)
-- **Email:** srvopus@gmail.com
-- **Once i feel there is support for my quality work , if this upgrades are usable for everyone i'll release this library in pypi live as** :
--  ```yt-search-python```
 ---
 
 <div align="center">
 
-**Made with ❤️ for the YouTube community**
+**Made with ❤️ for the community**
 
-[⬆ Back to Top](#-youtube-search-python)
+[Report Bug](https://github.com/BillaSpace/youtube-search-python/issues) • [Request Feature](https://github.com/BillaSpace/youtube-search-python/issues)
 
 </div>
