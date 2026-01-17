@@ -14,22 +14,30 @@ from youtubesearchpython.core.recommendations import RecommendationsCore
 
 class Video:
     @staticmethod
-    async def get(videoLink: str, resultMode: int = ResultMode.dict, timeout: int = 2, get_upload_date: bool = False) -> \
-    Union[dict, None]:
-        
+    async def get(
+        videoLink: str,
+        resultMode: int = ResultMode.dict,
+        timeout: int = 2,
+        get_upload_date: bool = False,
+    ) -> Union[dict, None]:
         video = VideoCore(videoLink, None, resultMode, timeout, get_upload_date, "ANDROID")
         if get_upload_date:
             await video.async_html_create()
         await video.async_create()
         return video.result
 
+    @staticmethod
+    async def getInfo(
+        videoLink: str, resultMode: int = ResultMode.dict, timeout: int = 2
+    ) -> Union[dict, None]:
+        video = VideoCore(videoLink, "getInfo", resultMode, timeout, False)
+        await video.async_create()
+        return video.result
 
     @staticmethod
-    async def getInfo(videoLink: str, resultMode: int = ResultMode.dict, timeout: int = 2) -> Union[dict, None]:
-
-    @staticmethod
-    async def getFormats(videoLink: str, resultMode: int = ResultMode.dict, timeout: int = 2) -> Union[dict, None]:       
-       
+    async def getFormats(
+        videoLink: str, resultMode: int = ResultMode.dict, timeout: int = 2
+    ) -> Union[dict, None]:
         video = VideoCore(videoLink, "getFormats", resultMode, timeout, False)
         await video.async_create()
         return video.result
@@ -37,16 +45,9 @@ class Video:
 
 class Suggestions:
     @staticmethod
-    async def get(query: str, language: str = 'en', region: str = 'US', mode: int = ResultMode.dict):
-        '''Fetches & returns the search suggestions & recommendations for the given query.
-
-        Args:
-            language (str, optional): Sets the language of the result. Defaults to 'en'.
-            region (str, optional): Sets the region of the result. Defaults to 'US'.
-
-        Returns:
-            Union[str, dict]: Returns JSON or dictionary.
-        '''
+    async def get(
+        query: str, language: str = "en", region: str = "US", mode: int = ResultMode.dict
+    ):
         suggestionsInternal = SuggestionsCore(language=language, region=region)
         suggestions = await suggestionsInternal._getAsync(query, mode)
         return suggestions
@@ -61,59 +62,55 @@ class Playlist:
 
     def __init__(self, playlistLink: str):
         self.playlistLink = playlistLink
-    
-    
+
+    async def init(self) -> None:
+        self.__playlist = PlaylistCore(self.playlistLink, None, ResultMode.dict, 2)
+        await self.__playlist.async_create()
+        self.info = copy.deepcopy(self.__playlist.result)
+        self.videos = self.__playlist.result.get("videos", [])
+        self.hasMoreVideos = self.__playlist.continuationKey is not None
 
     async def getNextVideos(self) -> None:
         if not self.info:
             await self.init()
         else:
             await self.__playlist._async_next()
-            self.videos = self.__playlist.result['videos']
-            self.hasMoreVideos = self.__playlist.continuationKey != None
-
-
+            self.videos = self.__playlist.result.get("videos", [])
+            self.hasMoreVideos = self.__playlist.continuationKey is not None
 
     @staticmethod
     async def get(playlistLink: str) -> Union[dict, str, None]:
-        
         playlist = PlaylistCore(playlistLink, None, ResultMode.dict, 2)
         await playlist.async_create()
         return playlist.playlistComponent
 
     @staticmethod
     async def getInfo(playlistLink: str) -> Union[dict, str, None]:
-
-        playlist = PlaylistCore(playlistLink, 'getInfo', ResultMode.dict, 2)
+        playlist = PlaylistCore(playlistLink, "getInfo", ResultMode.dict, 2)
         await playlist.async_create()
         return playlist.playlistComponent
 
     @staticmethod
-    async def getVideos(playlistLink: str) -> Union[dict, str, None]: 
-
-        playlist = PlaylistCore(playlistLink, 'getVideos', ResultMode.dict, 2)
+    async def getVideos(playlistLink: str) -> Union[dict, str, None]:
+        playlist = PlaylistCore(playlistLink, "getVideos", ResultMode.dict, 2)
         await playlist.async_create()
         return playlist.playlistComponent
 
 
 class Hashtag(HashtagCore):
-    def __init__(self, hashtag: str, limit: int = 60, language: str = 'en', region: str = 'US', timeout: int = None):
+    def __init__(
+        self, hashtag: str, limit: int = 60, language: str = "en", region: str = "US", timeout: int = None
+    ):
         super().__init__(hashtag, limit, language, region, timeout)
 
     async def next(self) -> dict:
-        '''Gets the videos from the next page.
-        Returns:
-            dict: Returns dictionary containing the search result.
-        '''
         self.response = None
         self.resultComponents = []
         if self.params is None:
             await self._asyncGetParams()
         await self._asyncMakeRequest()
         self._getComponents()
-        return {
-            'result': self.resultComponents,
-        }
+        return {"result": self.resultComponents}
 
 
 class Comments:
@@ -126,7 +123,6 @@ class Comments:
         self.playlistLink = playlistLink
 
     async def init(self) -> None:
-        """Initialize comments by fetching the first batch."""
         if self.__comments is None:
             self.__comments = CommentsCore(self.playlistLink)
             await self.__comments.async_create()
@@ -180,4 +176,3 @@ class Recommendations:
         recommendations_core = RecommendationsCore(videoId, timeout)
         await recommendations_core.async_create()
         return recommendations_core.resultComponents
-
