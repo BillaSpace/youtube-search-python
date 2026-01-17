@@ -4,7 +4,7 @@
 # python
 __pycache__
 dist
-
+*.env
 # testing
 test.py
 test2.py
