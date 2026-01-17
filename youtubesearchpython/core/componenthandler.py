@@ -1,7 +1,7 @@
+import re
 from typing import Union, List
 from youtubesearchpython.core.constants import *
 from urllib.parse import urlparse, parse_qs
-import re
 
 
 def getValue(source: dict, path: List[Union[str, int]]) -> Union[str, int, dict, None]:
