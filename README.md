@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![YouTube Search Python](https://files.catbox.moe/m25e74.jpg)
+![yt-search-python](https://files.catbox.moe/m25e74.jpg)
 
 [![GitHub Stars](https://img.shields.io/github/stars/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/network)
@@ -34,24 +34,26 @@ A professional, Modern & actively maintained Python library for searching YouTub
 
 ---
 
+## Old youtube-search-python User? 
+- if your are old user of this library & confused while migration to this library don't be confused just remove _ _ future _ _  imports to `youtube-search-python.future` only
+
 ## 📦 Installation
 
-### Via Git (Recommended)
+### Via Pip
+```bash
+pip3 install yt-search-python
+```
+
+### Via Git
 
 ```bash
 pip install git+https://github.com/BillaSpace/youtube-search-python.git
 ```
 
-### Via requirements.txt
+### Via git requirements.txt
 
 ```text
 git+https://github.com/BillaSpace/youtube-search-python.git
-```
-
-Then:
-
-```bash
-pip install -r requirements.txt
 ```
 
 ---
@@ -210,7 +212,7 @@ search.next()
 print(search.result())
 ```
 
-### Language & Region
+### 🌎 Language & Region
 
 ```python
 search = VideosSearch('Music', limit=10, language='es', region='ES')
@@ -248,7 +250,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 This library is not affiliated with YouTube or Google Inc. It uses YouTube's internal API which may change without notice. Use responsibly and in accordance with YouTube's Terms of Content usage and distribution Services.
 
 ---
-## 🙏 Credits
+## 🔁 Credits
 
 - **Current Developer:** [Prakhar](https://github.com/BillaSpace)contributors
 - **Old Author:** [Hitesh Kumar Saini](https://github.com/alexmercerind) 
