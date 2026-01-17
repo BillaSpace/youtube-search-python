@@ -240,7 +240,6 @@ class VideoCore(RequestCore):
                 elif rich_content and "lockupViewModel" in rich_content:
                     lockup = rich_content["lockupViewModel"]
                     if getValue(lockup, ["contentId"]) == video_id:
-                        # Return a dummy renderer for compatibility
                         return {
                             "videoId": video_id,
                             "title": {"runs": [{"text": getValue(lockup, ["metadata", "lockupMetadataViewModel", "title", "content"])}]},
@@ -317,7 +316,6 @@ class VideoCore(RequestCore):
                             'link': 'https://www.youtube.com/channel/' + (getValue(video_data, ['ownerText', 'runs', 0, 'navigationEndpoint', 'browseEndpoint', 'browseId']) or "")
                         }
                         
-                        # Extract hq720 thumbnail
                         if result['thumbnails']:
                             best_thumb = self.__getBestHq720FromThumbnails(result['thumbnails'])
                             if best_thumb:
@@ -464,7 +462,7 @@ class VideoCore(RequestCore):
                 if await self.__checkThumbnailExistsAsync(base_url):
                     enhanced.append(thumb)
         
-        # Use search API data if already fetched in same call, otherwise fetch separately
+        # Use search API data if already fetched in same call to avoid multiple reqs , otherwise fetch separately
         if search_api_data and search_api_data.get('hq720Thumbnail'):
             optimized_hq720 = search_api_data['hq720Thumbnail']
         else:
