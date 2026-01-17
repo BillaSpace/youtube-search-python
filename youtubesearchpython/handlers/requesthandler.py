@@ -10,7 +10,7 @@ from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubePars
 
 class RequestHandler(ComponentHandler):
     def _makeRequest(self) -> None:
-        ''' Fixes #47 '''
+        ''' Fixes v2 '''
         requestBody = copy.deepcopy(requestPayload)
         requestBody['query'] = self.query
         requestBody['client'] = {
@@ -58,6 +58,6 @@ class RequestHandler(ComponentHandler):
         except json.JSONDecodeError as e:
             raise YouTubeParseError(f'Failed to parse JSON response: {str(e)}')
         except KeyError as e:
-            raise YouTubeParseError(f'Missing expected key in response: {str(e)}')
+            raise YouTubeParseError(f'Missing expected continuty key in response: {str(e)}')
         except Exception as e:
             raise YouTubeParseError(f'Failed to parse YouTube response: {str(e)}')
