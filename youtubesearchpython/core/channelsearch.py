@@ -79,7 +79,7 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             raise YouTubeParseError(f'Unexpected error parsing response: {str(e)}')
 
     def _getRequestBody(self):
-        ''' Fixes #47 '''
+        ''' Fixes #v2 '''
         requestBody = copy.deepcopy(requestPayload)
         requestBody['query'] = self.query
         requestBody['client'] = {
@@ -94,7 +94,7 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         self.data = requestBody
 
     def _syncRequest(self) -> None:
-        ''' Fixes #47 '''
+        ''' Fixes #v2 '''
         self._getRequestBody()
 
         try:
@@ -112,7 +112,7 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             raise YouTubeRequestError(f'Unexpected error making request: {str(e)}')
 
     async def _asyncRequest(self) -> None:
-        ''' Fixes #47 '''
+        ''' Fixes #v2 '''
         self._getRequestBody()
 
         try:
