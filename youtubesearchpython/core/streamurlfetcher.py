@@ -22,7 +22,7 @@ except ImportError:
 class StreamURLFetcherCore(RequestCore):
     def __init__(self, proxy: str = None, cookies_file: str = None):
         if not isYtDLPinstalled:
-            raise Exception('ERROR: yt-dlp is not installed. Install with: pip install yt-dlp')
+            raise Exception('ERROR: yt-dlp is not installed in your system. Install with: pip3 install yt-dlp & try again')
 
         super().__init__()
 
@@ -64,6 +64,7 @@ class StreamURLFetcherCore(RequestCore):
 
         self.format_id = formatId
         self._decipher()
+        
 
     def extract_js_url(self, res: str):
         self._js_url = None
@@ -73,6 +74,7 @@ class StreamURLFetcherCore(RequestCore):
         if player_version:
             player_version = player_version.group().replace("\\", "")
             self._js_url = f'https://www.youtube.com/s/player/{player_version}/player_ias.vflset/en_US/base.js'
+            
 
     def _getJS(self) -> None:
         if not self.video_id:
