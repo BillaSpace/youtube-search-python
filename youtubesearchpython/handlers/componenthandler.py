@@ -2,6 +2,7 @@ from typing import List, Union
 from youtubesearchpython.core.constants import *
 
 
+
 class ComponentHandler:
     def _getVideoComponent(self, element: dict, shelfTitle: str = None) -> dict:
         video = element[videoElementKey]
