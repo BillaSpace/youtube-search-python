@@ -1,4 +1,4 @@
-# YouTube Search Python v2.0.0 
+# 📮 YouTube Search Python v2.0.0 
 - now known as :-
 `yt-search-python`
 
@@ -102,10 +102,11 @@ asyncio.run(main())
 
 ### Core Documentation
 - **[API Reference](docs.md)** - Complete API documentation with all classes and methods
-- **[Usage Examples](docs/examples/)** - Comprehensive examples for all features:
-  - [Search Examples](docs/examples/search_examples.md) - All search classes with filters
-  - [Video & Extras Examples](docs/examples/extras_examples.md) - Video, Playlist, Comments, etc.
-  - [Stream URL Examples](docs/examples/stream_examples.md) - Direct stream URL fetching
+- **[Usage Examples](docs/)** - Comprehensive examples for all features:
+  - [Search Examples](docs/search_examples.md) - All search classes with filters
+  - [Video & Extras Examples](docs/extras_examples.md) - Video, Playlist, Comments, etc.
+  - [Stream URL Examples](docs/stream_examples.md) - Direct stream URL fetching
+  - for stream url fetching services you must have `yt-dlp` already installed in your system
 
 ### Key Classes
 
@@ -245,7 +246,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## ⚠️ Disclaimer
+## ⚠️ Disclaimer 
 
 This library is not affiliated with YouTube or Google Inc. It uses YouTube's internal API which may change without notice. Use responsibly and in accordance with YouTube's Terms of Content usage and distribution Services.
 
