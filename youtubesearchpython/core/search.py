@@ -6,7 +6,6 @@ from youtubesearchpython.core.requests import RequestCore
 from youtubesearchpython.core.componenthandler import ComponentHandler
 from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubeParseError
-
 import json
 import httpx
 
