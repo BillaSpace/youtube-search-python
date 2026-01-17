@@ -36,7 +36,6 @@ def get_cleaned_url(video_link: str) -> str:
 def format_view_count(view_count_str: Optional[str]) -> dict:
     if not view_count_str:
         return {"text": None, "short": None}
-
     try:
         view_count = int(view_count_str)
     except (ValueError, TypeError):
