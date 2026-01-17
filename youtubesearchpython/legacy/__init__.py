@@ -10,6 +10,7 @@ def overrides(interface_class):
         assert(method.__name__ in dir(interface_class))
         return method
     return overrider
+    
 
 
 class LegacyComponentHandler(RequestHandler, ComponentHandler):
