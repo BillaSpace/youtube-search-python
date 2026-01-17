@@ -36,8 +36,6 @@ class Video:
 
 
 class Suggestions:
-    
-
     @staticmethod
     async def get(query: str, language: str = 'en', region: str = 'US', mode: int = ResultMode.dict):
         '''Fetches & returns the search suggestions & recommendations for the given query.
@@ -55,7 +53,6 @@ class Suggestions:
 
 
 class Playlist:
-
     playlistLink = None
     videos = []
     info = None
@@ -100,7 +97,6 @@ class Playlist:
 
 
 class Hashtag(HashtagCore):
-
     def __init__(self, hashtag: str, limit: int = 60, language: str = 'en', region: str = 'US', timeout: int = None):
         super().__init__(hashtag, limit, language, region, timeout)
 
@@ -184,3 +180,4 @@ class Recommendations:
         recommendations_core = RecommendationsCore(videoId, timeout)
         await recommendations_core.async_create()
         return recommendations_core.resultComponents
+
