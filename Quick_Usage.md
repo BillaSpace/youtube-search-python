@@ -11,7 +11,6 @@ from youtubesearchpython import VideosSearch
 search = VideosSearch('Watermelon Sugar', limit=1)
 result = search.result()
 ```
-
 **Output:**
 ```json
 {
