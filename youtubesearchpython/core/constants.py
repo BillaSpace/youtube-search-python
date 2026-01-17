@@ -4,8 +4,11 @@ requestPayload = {
     "context": {
         "client": {
             "clientName": "WEB",
-            "clientVersion": "2.20241210.01.00",
-            "newVisitorCookie": True,
+            # Client Version History:
+            # Latest: 2.20250115.01.00 (Jan 2026)
+            # Recent: 2.20241210.01.00 (Dec 2024)
+            # Legacy: 2.20210621.02.00 (Jun 2021 - stable fallback)
+            "clientVersion": "2.20250115.01.00",
         },
         "user": {
             "lockedSafetyMode": False,
@@ -22,6 +25,7 @@ userAgent = (
 
 
 videoElementKey = "videoRenderer"
+compactVideoElementKey = "compactVideoRenderer"
 channelElementKey = "channelRenderer"
 playlistElementKey = "playlistRenderer"
 shelfElementKey = "shelfRenderer"
