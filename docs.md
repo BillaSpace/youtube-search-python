@@ -1,7 +1,7 @@
 ## Quick Documentations ✳️
 
 ### This is the updated and complete documentation for yt-search-python, highlighting modern async-first design.
-- > For full usage guides and examples, visit the Docs: https://github.com/BillaSpace/yt-search-python/docs/
+ For full usage guides and examples, [visit the Docs:](https://github.com/BillaSpace/yt-search-python/docs/)
 
 
 ---
