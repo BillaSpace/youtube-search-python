@@ -58,4 +58,4 @@ class StreamURLFetcher(StreamURLFetcherCore):
         
         Must be called before using get() or getAll() methods.
         '''
-        await self._getJSAsync()
+        await super().getJavaScript()
