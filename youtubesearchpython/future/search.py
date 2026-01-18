@@ -106,6 +106,9 @@ class ChannelSearch(ChannelSearchCore):
     def __init__(self, query: str, browseId: str, language: str = 'en', region: str = 'US', searchPreferences: str = "EgZzZWFyY2g%3D", timeout: Optional[int] = None):
         super().__init__(query, language, region, searchPreferences, browseId, timeout)
 
+    async def next(self) -> Dict[str, Any]:
+        return await self.async_create()
+
 
 class CustomSearch(SearchCore):
     '''Performs custom search in YouTube with search filters or sorting orders (async version).
