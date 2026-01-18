@@ -117,31 +117,28 @@ Search within a specific channel.
 Retrieves video information and formats.
 
 **Methods:**
-- `get(video_id: str, mode: int = ResultMode.dict, timeout: int = 2) -> dict | str`: Gets full video info. Accepts video ID or full URL.
-- `getInfo(video_id: str, mode: int = ResultMode.dict, timeout: int = 2) -> dict | str`: Gets metadata only (faster). Accepts ID or URL.
-- `getFormats(video_id: str, mode: int = ResultMode.dict, timeout: int = 2) -> dict | str`: Gets streaming formats only. Accepts ID or URL.
+- `get(video_id: str, mode: int = ResultMode.dict, timeout: int = None) -> dict | str`: Gets full video info. Accepts video ID or full URL.
+- `getFormats(video_id: str, mode: int = ResultMode.dict, timeout: int = None) -> dict | str`: Gets streaming formats only. Accepts ID or URL.
 
 **Async (`future.Video`):**
-- methods are `await Video.get(...)`, `await Video.getInfo(...)`, etc.
+- `await Video.get(video_id: str, resultMode: int = ResultMode.dict, timeout: int = 2, get_upload_date: bool = False) -> dict`: Gets full video info.
+- `await Video.getInfo(video_id: str, resultMode: int = ResultMode.dict, timeout: int = 2) -> dict`: Gets metadata only (faster).
+- `await Video.getFormats(video_id: str, resultMode: int = ResultMode.dict, timeout: int = 2) -> dict`: Gets streaming formats only.
 
 ---
 
 ### Channel
 
-Retrieves channel information.
-
-**Constructor:**
-`Channel(channel_id: str, request_type: str)`
-- `channel_id`: The Channel ID (must start with `UC...`).
-- `request_type`: Type of content to fetch (e.g., `ChannelRequestType.playlists`).
+Retrieves channel information and content (playlists).
 
 **Methods:**
-- `result(mode: int = ResultMode.dict) -> dict | str`: Returns channel info.
+- `get(channelId: str, mode: int = ResultMode.dict, timeout: int = None) -> dict | str`: Gets channel info.
 
 **Async (`future.Channel`):**
-- `await Channel.get(channel_id)`: Static method to fetch and return channel info.
+- `await Channel.get(channel_id: str, request_type: str = ChannelRequestType.playlists) -> dict`: Static method to fetch and return channel info.
+- `Channel(channel_id: str, request_type: str = ChannelRequestType.playlists)`: Constructor for instance-based browsing.
 - `await init()`: Initialize instance.
-- `await next()`: Fetch next page of content (if browsing videos/playlists).
+- `await next()`: Fetch next page of content (playlists).
 
 ---
 
@@ -149,17 +146,20 @@ Retrieves channel information.
 
 Retrieves playlist information and videos.
 
-**Constructor:**
-`Playlist(playlist_link: str)`
-- `playlist_link`: Full YouTube playlist URL OR just the playlist ID (e.g., `PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK`).
-
 **Methods:**
+- `get(playlistLink: str, mode: int = ResultMode.dict, timeout: int = None) -> dict | str`: Static method to fetch playlist info and videos.
+- `Playlist(playlistLink: str, timeout: int = None)`: Constructor for instance-based pagination.
+- `getNextVideos() -> dict`: Fetches next batch of videos.
 - `hasMoreVideos: bool`: Property indicating if more videos are available.
-- `getNextVideos()`: Fetches next batch of videos.
 
 **Async (`future.Playlist`):**
-- `await Playlist.get(link)`: Static method to fetch info.
+- `await Playlist.get(playlistLink: str) -> dict`: Static method to fetch info.
+- `await Playlist.getInfo(playlistLink: str) -> dict`: Static method to fetch metadata.
+- `await Playlist.getVideos(playlistLink: str) -> dict`: Static method to fetch videos.
+- `Playlist(playlistLink: str)`: Constructor.
+- `await init()`: Initialize instance.
 - `await getNextVideos()`: Instance method to fetch more.
+- `hasMoreVideos: bool`: Property.
 
 ---
 
@@ -167,17 +167,46 @@ Retrieves playlist information and videos.
 
 Retrieves comments for a video.
 
-**Constructor:**
-`Comments(video_id: str)`
-- `video_id`: The video ID (not full URL).
-
 **Methods:**
+- `get(videoLink: str, mode: int = ResultMode.dict, timeout: int = None) -> dict | str`: Static method.
+- `Comments(videoLink: str, timeout: int = None)`: Constructor.
+- `getNextComments() -> dict`: Fetches next batch of comments.
 - `hasMoreComments: bool`
-- `getNextComments()`: Fetches next batch of comments.
 
 **Async (`future.Comments`):**
-- `await Comments.get(video_id)`: Static method.
+- `await Comments.get(videoLink: str) -> dict`: Static method.
+- `Comments(videoLink: str, timeout: int = None)`: Constructor.
+- `await init()`: Initialize instance.
 - `await getNextComments()`: Instance method.
+- `hasMoreComments: bool`
+
+---
+
+### Suggestions
+
+Retrieves search suggestions.
+
+**Methods:**
+- `get(query: str, language: str = 'en', region: str = 'US', timeout: int = None) -> dict | str`: Static method.
+- `Suggestions(language: str = 'en', region: str = 'US', timeout: int = None)`: Constructor.
+- `get(query: str, mode: int = ResultMode.dict) -> dict | str`: Instance method.
+
+**Async (`future.Suggestions`):**
+- `await Suggestions.get(query: str, language: str = 'en', region: str = 'US', mode: int = ResultMode.dict) -> dict`: Static method.
+- `Suggestions(language: str = 'en', region: str = 'US')`: Constructor.
+- `await get(query: str, mode: int = ResultMode.dict) -> dict`: Instance method.
+
+---
+
+### Recommendations
+
+Retrieves video recommendations (related videos).
+
+**Methods:**
+- `get(videoId: str, timeout: int = None) -> list`: Static method.
+
+**Async (`future.Recommendations`):**
+- `await Recommendations.get(videoId: str, timeout: int = 2) -> list`: Static method.
 
 ---
 
@@ -202,9 +231,11 @@ Fetches direct media URLs.
 - `cookies_file`: Path to cookies.txt file for authenticated requests.
 
 **Methods:**
-- `get(video_data: dict, itag: int) -> str`: Returns URL for specific itag.
-- `getAll(video_data: dict) -> dict`: Returns all stream URLs.
-- `getJavaScript()`: Fetches necessary JS (run once i suggesst install deno for proper working).
+- `get(video_data: dict, itag: int) -> str`: Returns direct stream URL for specific itag.
+- `getAll(video_data: dict) -> dict`: Returns all direct stream URLs in a dictionary.
+- `getJavaScript()`: Fetches necessary deciphering JavaScript from YouTube (sync or async).
 
 **Async (`future.StreamURLFetcher`):**
-- All methods are awaitable.
+- `await get(video_data, itag)`
+- `await getAll(video_data)`
+- `await getJavaScript()`
