@@ -113,6 +113,9 @@ class ChannelSearch(ChannelSearchCore):
         super().__init__(query, language, region, searchPreferences, browseId, timeout)
         self.sync_create()
 
+    def next(self):
+        return self.sync_create()
+
 
 class CustomSearch(SearchCore):
     '''Performs custom search in YouTube with search filters or sorting orders. 
