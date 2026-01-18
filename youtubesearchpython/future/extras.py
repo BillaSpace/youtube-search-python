@@ -52,6 +52,12 @@ class Suggestions:
         suggestions = await suggestionsInternal._getAsync(query, mode)
         return suggestions
 
+    def __init__(self, language: str = "en", region: str = "US"):
+        self.suggestionsInternal = SuggestionsCore(language=language, region=region)
+
+    async def get(self, query: str, mode: int = ResultMode.dict):
+        return await self.suggestionsInternal._getAsync(query, mode)
+
 
 class Playlist:
     playlistLink = None
@@ -82,19 +88,19 @@ class Playlist:
     async def get(playlistLink: str) -> Union[dict, str, None]:
         playlist = PlaylistCore(playlistLink, None, ResultMode.dict, 2)
         await playlist.async_create()
-        return playlist.playlistComponent
+        return playlist.result
 
     @staticmethod
     async def getInfo(playlistLink: str) -> Union[dict, str, None]:
         playlist = PlaylistCore(playlistLink, "getInfo", ResultMode.dict, 2)
         await playlist.async_create()
-        return playlist.playlistComponent
+        return playlist.result
 
     @staticmethod
     async def getVideos(playlistLink: str) -> Union[dict, str, None]:
         playlist = PlaylistCore(playlistLink, "getVideos", ResultMode.dict, 2)
         await playlist.async_create()
-        return playlist.playlistComponent
+        return playlist.result
 
 
 class Hashtag(HashtagCore):
@@ -139,8 +145,8 @@ class Comments:
         self.hasMoreComments = self.__comments.continuationKey is not None
 
     @staticmethod
-    async def get(playlistLink: str) -> Union[dict, str, None]:
-        pc = CommentsCore(playlistLink)
+    async def get(videoLink: str) -> Union[dict, str, None]:
+        pc = CommentsCore(videoLink)
         await pc.async_create()
         return pc.commentsComponent
 
