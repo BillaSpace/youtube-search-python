@@ -9,11 +9,11 @@ class StreamURLFetcher(StreamURLFetcherCore):
     Call `get` or `getAll` method of this class & pass response returned by `Video.get` or `Video.getFormats` as parameter to fetch direct URLs.
     
     Getting URLs or downloading streams using youtube-dl or PyTube can be slow, because they make requests to fetch the same content.
-    This class makes use of PyTube (if installed) & makes some slight improvements to PyTube's functioning.
+    This class makes use of yt-dlp which might need the installation of deno runtime pack too (if installed) & makes some slight improvements to yt-dlp 's functioning.
     Avoid instantiating this class more than once (making a global object is recommended).
 
     Raises:
-        Exception: "ERROR: PyTube is not installed. To use this functionality of youtube-search-python, PyTube must be installed."
+        Exception: "ERROR: yt-dlp is not installed. To use this functionality of yt-search-python, yt-dlp must be installed on your system."
     
     See Also:
         For usage examples, see docs/stream_examples.md
