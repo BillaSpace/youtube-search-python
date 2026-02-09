@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from youtubesearchpython.__future__ import *
+from youtubesearchpython.future import *
 
 def pretty_print(data, fn_name, elapsed):
     print(json.dumps(data, indent=2, ensure_ascii=False))
@@ -48,3 +48,4 @@ async def main():
     pretty_print(playlist, fn, t)
 
 asyncio.run(main())
+
