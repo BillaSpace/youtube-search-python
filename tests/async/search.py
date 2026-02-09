@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from youtubesearchpython.__future__ import (
+from youtubesearchpython.future import (
     Search,
     VideosSearch,
     ChannelsSearch,
@@ -60,3 +60,4 @@ async def main():
         print("-" * 60)
 
 asyncio.run(main())
+
