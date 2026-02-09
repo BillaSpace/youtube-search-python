@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 
-from youtubesearchpython.__future__ import Playlist
+from youtubesearchpython.future import Playlist
 
 
 def pretty_print(data, fn_name, elapsed):
@@ -77,3 +77,4 @@ async def main():
 
 
 asyncio.run(main())
+
