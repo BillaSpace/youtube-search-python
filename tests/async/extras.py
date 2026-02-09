@@ -2,7 +2,7 @@ import asyncio
 import json
 import time
 
-from youtubesearchpython.__future__ import (
+from youtubesearchpython.future import (
     Video,
     StreamURLFetcher,
     Suggestions,
@@ -174,3 +174,4 @@ async def main():
 
 
 asyncio.run(main())
+
