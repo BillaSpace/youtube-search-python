@@ -1,6 +1,6 @@
 # 📮 YouTube Search Python v2.0.0 
-- now known as :-
-`yt-search-python`
+- now known as :
+- `yt-search-python`
 
 <div align="center">
 
