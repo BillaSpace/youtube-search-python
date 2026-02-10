@@ -26,16 +26,18 @@ A professional, Modern & actively maintained Python library for searching YouTub
 - 🚀 **No API Key Required** - Search YouTube without quotas or rate limits
 - ⚡ **Fast & Reliable** - Optimized for performance with modern httpx
 - 🔄 **Sync & Async Support** - Use synchronous or asynchronous methods
-- 📦 **Rich Metadata** - Get videos, channels, playlists, comments, transcripts & more
+- ➕ **Dual Result Mode** -
+use ResultMode.dict or json [default dict] as you want
+- 📦 **Rich Metadata** - Get videos, channels, playlists, comments, suggestions, recommendations, transcripts & more
 - 🎯 **Advanced Filtering** - Sort by date, views, duration, and more
 - 🌐 **Multi-Region** - Search with language and region preferences
-- 🔧 **Modern** - Compatible with Python 3.7+ to current and httpx 0.28+
+- 🔧 **Modern** - Compatible with Python 3.7+ to current and httpx 0.28.1+
 - 💪 **Type Hints** - Full type annotations for better IDE support
 
 ---
 
 ## Old youtube-search-python User? 
-- if your are old user of this library & confused while migration to this library don't be confused just replace import-
+- if your are a old user of this library & confused while migrating to this library don't be confused just replace existing imports with-
 - `youtubesearchpython.__future __`
 - to :
 - `youtubesearchpython.future` only
