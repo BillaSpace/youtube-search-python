@@ -35,7 +35,10 @@ A professional, Modern & actively maintained Python library for searching YouTub
 ---
 
 ## Old youtube-search-python User? 
-- if your are old user of this library & confused while migration to this library don't be confused just remove _ _ future _ _  imports to `youtube-search-python.future` only
+- if your are old user of this library & confused while migration to this library don't be confused just replace import-
+- `youtubesearchpython.__future __`
+- to :
+- `youtubesearchpython.future` only
 
 ## 📦 Installation
 
@@ -50,7 +53,7 @@ pip3 install yt-search-python
 pip install git+https://github.com/BillaSpace/youtube-search-python.git
 ```
 
-### Via git requirements.txt
+### for requirements.txt via git
 
 ```text
 git+https://github.com/BillaSpace/youtube-search-python.git
@@ -100,7 +103,8 @@ asyncio.run(main())
 
 ## 📚 Documentation
 
-### Core Documentation
+### Core Documentations
+- **[Async Page?](https://github.com/BillaSpace/yt-search-python/youtubesearchpython/future/)**
 - **[API Reference](docs.md)** - Complete API documentation with all classes and methods
 - **[Usage Examples](docs/)** - Comprehensive examples for all features:
   - [Search Examples](docs/search_examples.md) - All search classes with filters
@@ -253,7 +257,7 @@ This library is not affiliated with YouTube or Google Inc. It uses YouTube's int
 ---
 ## 🔁 Credits
 
-- **Current Developer:** [Prakhar](https://github.com/BillaSpace)
+- **Current Dev:** [Prakhar](https://github.com/BillaSpace)
 - **Old Author:** [Hitesh Kumar Saini](https://github.com/alexmercerind) 
 
 ---
@@ -263,8 +267,8 @@ This library is not affiliated with YouTube or Google Inc. It uses YouTube's int
 
 - If you find this library useful, please consider to support the developer by giving a fork & ✳️ star on [GitHub](https://github.com/BillaSpace/youtube-search-python) , 
 
-- if i found this library is really useful n necessary for everyone i'll keep maintaining on [pypi](https://pypi.org/project/yt-search-python) as -;
-`yt-search-python`
+- if i found this library is really useful n necessary for everyone i'll keep maintaining on [pypi](https://pypi.org/project/yt-search-python) as :
+~ `yt-search-python`
 
 ---
 
