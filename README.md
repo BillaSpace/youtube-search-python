@@ -104,7 +104,7 @@ asyncio.run(main())
 ## 📚 Documentation
 
 ### Core Documentations
-- **[Async Page?](https://github.com/BillaSpace/yt-search-python/youtubesearchpython/future/)**
+- **[Async Page?](https://github.com/BillaSpace/yt-search-python/tree/legacy/youtubesearchpython/future)** - Future Async tab
 - **[API Reference](docs.md)** - Complete API documentation with all classes and methods
 - **[Usage Examples](docs/)** - Comprehensive examples for all features:
   - [Search Examples](docs/search_examples.md) - All search classes with filters
@@ -265,7 +265,7 @@ This library is not affiliated with YouTube or Google Inc. It uses YouTube's int
 
 ## 🌟 Support & Future of the Library 
 
-- If you find this library useful, please consider to support the developer by giving a fork & ✳️ star on [GitHub](https://github.com/BillaSpace/youtube-search-python) , 
+- If you find this library useful, please consider to support the developer by giving a fork & ✳️ star on **[GitHub](https://github.com/BillaSpace/youtube-search-python)**
 
 - if i found this library is really useful n necessary for everyone i'll keep maintaining on [pypi](https://pypi.org/project/yt-search-python) as :
 ~ `yt-search-python`
