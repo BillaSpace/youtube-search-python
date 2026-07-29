@@ -46,8 +46,7 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
                 self.response = []
                 return
             
-            last_tab = tabs[-1]
-            
+            last_tab = tabs[-1]            
             if 'expandableTabRenderer' in last_tab:
                 expandable = last_tab["expandableTabRenderer"]
                 if 'content' in expandable:
@@ -79,24 +78,20 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             raise YouTubeParseError(f'Unexpected error parsing response: {str(e)}')
 
     def _getRequestBody(self):
-        ''' Fixes #v2 '''
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody['query'] = self.query
-        requestBody['client'] = {
-            'hl': self.language,
-            'gl': self.region,
-        }
-        requestBody['params'] = self.searchPreferences
-        requestBody['browseId'] = self.browseId
+        ''' Fixes #v2.1 '''
+        self.data = self.buildInnertubeBody(
+            query=self.query,
+            client={'hl': self.language, 'gl': self.region},
+            params=self.searchPreferences,
+            browseId=self.browseId,
+        )
         self.url = 'https://www.youtube.com/youtubei/v1/browse' + '?' + urlencode({
             'key': searchKey,
         })
-        self.data = requestBody
 
     def _syncRequest(self) -> None:
-        ''' Fixes #v2 '''
+        ''' Fixes #v2.1'''
         self._getRequestBody()
-
         try:
             request = self.syncPostRequest()
             if request.status_code != 200:
@@ -112,9 +107,8 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
             raise YouTubeRequestError(f'Unexpected error making request: {str(e)}')
 
     async def _asyncRequest(self) -> None:
-        ''' Fixes #v2 '''
+        ''' Fixes #v2.1 '''
         self._getRequestBody()
-
         try:
             request = await self.asyncPostRequest()
             if request.status_code != 200:
@@ -139,4 +133,4 @@ class ChannelSearchCore(RequestCore, ComponentHandler):
         if mode == ResultMode.json:
             return json.dumps({'result': self.response}, indent=4)
         elif mode == ResultMode.dict:
-            return {'result': self.response}
+            return {'result': self.response}            
