@@ -12,7 +12,7 @@ from youtubesearchpython.core.utils import *
 
 __title__        = 'yt-search-python'
 __version__      = '2.1.0'
-__author__       = 'Prakhar'
+__author__       = 'Prakhar-Shukla'
 __license__      = 'MIT'
 
 ''' Deprecated. Present for legacy support. '''
