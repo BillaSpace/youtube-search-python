@@ -1,4 +1,4 @@
-# YT Search Python v2.1.1
+# yt-search-python v2.1.1
 
 **Search and read YouTube data (videos, playlists, channels, comments, transcripts) without the YouTube Data API v3 — no API key, no quota limits.**
 
