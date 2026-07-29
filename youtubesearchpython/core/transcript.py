@@ -5,7 +5,7 @@ from html import unescape
 from typing import Union, Dict, List, Optional
 import httpx
 
-from youtubesearchpython.core.requests import RequestCore
+from youtubesearchpython.core.requests import RequestCore, _get_sync_client, _get_async_client
 from youtubesearchpython.core.componenthandler import getVideoId
 from youtubesearchpython.core.exceptions import YouTubeRequestError
 
@@ -13,7 +13,7 @@ from youtubesearchpython.core.exceptions import YouTubeRequestError
 class TranscriptCore(RequestCore):
     """
     Fetches transcripts by parsing the video page HTML to extract captions data.
-    Based on youtube-transcript-api approach but implemented directly.
+    Based on youtube-transcript-api approach.
     """
     def __init__(self, videoLink: str, key: str = None):
         super().__init__()
@@ -28,8 +28,7 @@ class TranscriptCore(RequestCore):
             r'var ytInitialPlayerResponse\s*=\s*({.+?});var',
             r'ytInitialPlayerResponse\s*=\s*({.+?});',
             r'ytInitialPlayerResponse"\s*:\s*({.+?}),"',
-        ]
-        
+        ]        
         for pattern in patterns:
             match = re.search(pattern, html, re.DOTALL)
             if match:
@@ -44,32 +43,57 @@ class TranscriptCore(RequestCore):
                             brace_count -= 1
                             if brace_count == 0:
                                 end_pos = i + 1
-                                break
-                    
+                                break                    
                     if end_pos > 0:
-                        json_str = json_str[:end_pos]
-                    
+                        json_str = json_str[:end_pos]                    
                     player_response = json.loads(json_str)
                     return player_response
                 except (json.JSONDecodeError, ValueError) as e:
-                    continue
-        
+                    continue        
         return None
     
+    def _select_track(self, caption_tracks: List[Dict]) -> Dict:
+        if self.key:
+            for track in caption_tracks:
+                if track.get("languageCode") == self.key:
+                    return track
+        return caption_tracks[0]
+
     def _fetch_transcript_xml(self, url: str) -> List[Dict]:
         """Fetch and parse transcript XML from caption URL"""
         try:
-            response = httpx.get(url, timeout=10)
+            response = _get_sync_client().get(url, timeout=10)
+            response.raise_for_status()
+            root = ET.fromstring(response.text)            
+            segments = []
+            for text_elem in root.findall('.//text'):
+                start = float(text_elem.get('start', 0))
+                duration = float(text_elem.get('dur', 0))
+                text = text_elem.text or ""
+                text = unescape(text)             
+                segments.append({
+                    "text": text,
+                    "start": start,
+                    "duration": duration,
+                    "startMs": str(int(start * 1000)),
+                    "endMs": str(int((start + duration) * 1000))
+                })            
+            return segments
+        except Exception as e:
+            return []
+    
+    async def _fetch_transcript_xml_async(self, url: str) -> List[Dict]:
+        """Async version of transcript XML fetching"""
+        try:
+            response = await _get_async_client().get(url, timeout=10)
             response.raise_for_status()
             root = ET.fromstring(response.text)
-            
             segments = []
             for text_elem in root.findall('.//text'):
                 start = float(text_elem.get('start', 0))
                 duration = float(text_elem.get('dur', 0))
                 text = text_elem.text or ""
                 text = unescape(text)
-                
                 segments.append({
                     "text": text,
                     "start": start,
@@ -77,68 +101,33 @@ class TranscriptCore(RequestCore):
                     "startMs": str(int(start * 1000)),
                     "endMs": str(int((start + duration) * 1000))
                 })
-            
             return segments
         except Exception as e:
-            print(f"DEBUG: Error fetching transcript XML: {e}")
-            return []
-    
-    async def _fetch_transcript_xml_async(self, url: str) -> List[Dict]:
-        """Async version of transcript XML fetching"""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url, timeout=10)
-                response.raise_for_status()
-                
-                root = ET.fromstring(response.text)
-                
-                segments = []
-                for text_elem in root.findall('.//text'):
-                    start = float(text_elem.get('start', 0))
-                    duration = float(text_elem.get('dur', 0))
-                    text = text_elem.text or ""
-                    text = unescape(text)
-                    
-                    segments.append({
-                        "text": text,
-                        "start": start,
-                        "duration": duration,
-                        "startMs": str(int(start * 1000)),
-                        "endMs": str(int((start + duration) * 1000))
-                    })
-                
-                return segments
-        except Exception as e:
-            print(f"DEBUG: Error fetching transcript XML (async): {e}")
             return []
     
     def sync_create(self):
         """Fetch transcript by parsing video page HTML"""
         try:
             watch_url = f"https://www.youtube.com/watch?v={self.video_id}"
-            response = httpx.get(watch_url, timeout=10, follow_redirects=True)
+            response = _get_sync_client().get(watch_url, timeout=10, follow_redirects=True)
             response.raise_for_status()
             player_response = self._extract_player_response(response.text)
             if not player_response:
-                print("DEBUG: Could not extract player response from page")
                 self.result = {"segments": [], "languages": []}
                 return
             
             captions = player_response.get("captions")
             if not captions:
-                print("DEBUG: No captions in player response")
                 self.result = {"segments": [], "languages": []}
                 return
             
             renderer = captions.get("playerCaptionsTracklistRenderer")
             if not renderer:
-                print("DEBUG: No playerCaptionsTracklistRenderer found")
                 self.result = {"segments": [], "languages": []}
                 return
             
             caption_tracks = renderer.get("captionTracks", [])
             if not caption_tracks:
-                print("DEBUG: No caption tracks available")
                 self.result = {"segments": [], "languages": []}
                 return
             
@@ -151,87 +140,83 @@ class TranscriptCore(RequestCore):
                     "languageCode": track.get("languageCode"),
                     "language": lang_name,
                     "isGenerated": track.get("kind") == "asr",
-                    "baseUrl": track.get("baseUrl")
+                    "baseUrl": track.get("baseUrl"),
+                    "params": track.get("languageCode"),
                 }
                 languages.append(lang_info)
             
             if caption_tracks:
-                base_url = caption_tracks[0].get("baseUrl", "")
+                selected_track = self._select_track(caption_tracks)
+                base_url = selected_track.get("baseUrl", "")
                 if base_url:
-                    # Remove fmt=srv3 for better compatibility to push for cleaner segement 
                     base_url = base_url.replace("&fmt=srv3", "")
-                    segments = self._fetch_transcript_xml(base_url)
-                    
+                    segments = self._fetch_transcript_xml(base_url)                    
                     self.result = {
                         "segments": segments,
                         "languages": languages
                     }
-                    print(f"DEBUG: Successfully fetched {len(segments)} transcript segments")
                 else:
                     self.result = {"segments": [], "languages": languages}
             else:
                 self.result = {"segments": [], "languages": []}
                 
         except Exception as e:
-            print(f"DEBUG: Transcript fetch error: {type(e).__name__}: {e}")
             self.result = {"segments": [], "languages": []}
     
     async def async_create(self):
         """Async version of transcript fetching"""
         try:
             watch_url = f"https://www.youtube.com/watch?v={self.video_id}"
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                response = await client.get(watch_url, timeout=10)
-                response.raise_for_status()
-                
-                player_response = self._extract_player_response(response.text)
-                if not player_response:
-                    self.result = {"segments": [], "languages": []}
-                    return
-                
-                captions = player_response.get("captions")
-                if not captions:
-                    self.result = {"segments": [], "languages": []}
-                    return
-                
-                renderer = captions.get("playerCaptionsTracklistRenderer")
-                if not renderer:
-                    self.result = {"segments": [], "languages": []}
-                    return
-                
-                caption_tracks = renderer.get("captionTracks", [])
-                if not caption_tracks:
-                    self.result = {"segments": [], "languages": []}
-                    return
-                
-                languages = []
-                for track in caption_tracks:
-                    name = track.get("name", {})
-                    lang_name = name.get("simpleText") or (name.get("runs", [{}])[0].get("text") if name.get("runs") else "Unknown")
-                    
-                    lang_info = {
-                        "languageCode": track.get("languageCode"),
-                        "language": lang_name,
-                        "isGenerated": track.get("kind") == "asr",
-                        "baseUrl": track.get("baseUrl")
+            client = _get_async_client()
+            response = await client.get(watch_url, timeout=30, follow_redirects=True)
+            response.raise_for_status()
+
+            player_response = self._extract_player_response(response.text)
+            if not player_response:
+                self.result = {"segments": [], "languages": []}
+                return
+
+            captions = player_response.get("captions")
+            if not captions:
+                self.result = {"segments": [], "languages": []}
+                return
+
+            renderer = captions.get("playerCaptionsTracklistRenderer")
+            if not renderer:
+                self.result = {"segments": [], "languages": []}
+                return
+
+            caption_tracks = renderer.get("captionTracks", [])
+            if not caption_tracks:
+                self.result = {"segments": [], "languages": []}
+                return
+
+            languages = []
+            for track in caption_tracks:
+                name = track.get("name", {})
+                lang_name = name.get("simpleText") or (name.get("runs", [{}])[0].get("text") if name.get("runs") else "Unknown")
+                lang_info = {
+                    "languageCode": track.get("languageCode"),
+                    "language": lang_name,
+                    "isGenerated": track.get("kind") == "asr",
+                    "baseUrl": track.get("baseUrl"),
+                    "params": track.get("languageCode"),
+                }
+                languages.append(lang_info)
+
+            if caption_tracks:
+                selected_track = self._select_track(caption_tracks)
+                base_url = selected_track.get("baseUrl", "")
+                if base_url:
+                    base_url = base_url.replace("&fmt=srv3", "")
+                    segments = await self._fetch_transcript_xml_async(base_url)
+                    self.result = {
+                        "segments": segments,
+                        "languages": languages
                     }
-                    languages.append(lang_info)
-                
-                if caption_tracks:
-                    base_url = caption_tracks[0].get("baseUrl", "")
-                    if base_url:
-                        base_url = base_url.replace("&fmt=srv3", "")
-                        segments = await self._fetch_transcript_xml_async(base_url)
-                        
-                        self.result = {
-                            "segments": segments,
-                            "languages": languages
-                        }
-                    else:
-                        self.result = {"segments": [], "languages": languages}
                 else:
-                    self.result = {"segments": [], "languages": []}
-                    
+                    self.result = {"segments": [], "languages": languages}
+            else:
+                self.result = {"segments": [], "languages": []}
         except Exception as e:
-            print(f"DEBUG: Async transcript fetch error: {type(e).__name__}: {e}")
-            self.result = {"segments": [], "languages": []}
+            self.result = {"segments": [], "languages": []}           
