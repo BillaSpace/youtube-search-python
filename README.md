@@ -1,283 +1,194 @@
-# 📮 YouTube Search Python v2.0.0 
-- now known as :
-- `yt-search-python`
+# 📮 YouTube Search Python v2.1.1
 
-<div align="center">
+**Search and read YouTube data (videos, playlists, channels, comments, transcripts) without the YouTube Data API v3 — no API key, no quota limits.**
 
-![yt-search-python](https://files.catbox.moe/m25e74.jpg)
-
-[![GitHub Stars](https://img.shields.io/github/stars/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/network)
-[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/github/license/BillaSpace/youtube-search-python?style=for-the-badge)](https://github.com/BillaSpace/youtube-search-python/blob/main/LICENSE)
-
-**Search YouTube without the YouTube Data API v3**
-
-A professional, Modern & actively maintained Python library for searching YouTube content—completely free and without youtube data API quotas.
-
-[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Examples](#-examples) • [Testing](#-testing)
-
-</div>
+[Installation](#installation) • [Quick Start](#quick-start) • [Key Classes](#key-classes) • [Examples](#examples) • [Known Limitations](#known-limitations) • [Testing](#testing)
 
 ---
 
-## ✨ Features
+## What this library does
 
-- 🚀 **No API Key Required** - Search YouTube without quotas or rate limits
-- ⚡ **Fast & Reliable** - Optimized for performance with modern httpx
-- 🔄 **Sync & Async Support** - Use synchronous or asynchronous methods
-- ➕ **Dual Result Mode** -
-use ResultMode.dict or json [default dict] as you want
-- 📦 **Rich Metadata** - Get videos, channels, playlists, comments, suggestions, recommendations, transcripts & more
-- 🎯 **Advanced Filtering** - Sort by date, views, duration, and more
-- 🌐 **Multi-Region** - Search with language and region preferences
-- 🔧 **Modern** - Compatible with Python 3.7+ to current and httpx 0.28.1+
-- 💪 **Type Hints** - Full type annotations for better IDE support
+It talks to YouTube's own internal (`innertube`) endpoints — the same ones the youtube.com website itself calls — and parses the JSON back into clean Python structures. Both a synchronous API (`youtubesearchpython`) and an async API (`youtubesearchpython.future`) are provided, sharing the same underlying parsing logic so their results match.
+
+Previous users of `youtube-search-python`: replace `youtubesearchpython.__future__` imports with `youtubesearchpython.future` — nothing else changes.
 
 ---
 
-## Old youtube-search-python User? 
-- if your are a old user of this library & confused while migrating to this library don't be confused just replace existing imports with-
-- `youtubesearchpython.__future __`
-- to :
-- `youtubesearchpython.future` only
+## Installation
 
-## 📦 Installation
-
-### Via Pip
 ```bash
 pip3 install yt-search-python
 ```
 
-### Via Git
-
+Or from source:
 ```bash
-pip install git+https://github.com/BillaSpace/youtube-search-python.git
-```
-
-### for requirements.txt via git
-
-```text
-git+https://github.com/BillaSpace/youtube-search-python.git
+pip install git+https://github.com/BillaSpace/yt-search-python.git
 ```
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
-### Search for Videos
-
+**Search for videos**
 ```python
 from youtubesearchpython import VideosSearch
 
-search = VideosSearch('NoCopyrightSounds', limit=10)
+search = VideosSearch('Hindutva', limit=10)
 print(search.result())
 ```
 
-### Get Video Information
-
+**Get video info + streaming formats**
 ```python
 from youtubesearchpython import Video
 
 video = Video.get('https://www.youtube.com/watch?v=aqz-KE-bpKQ')
-print(video['title'])
-print(video['viewCount'])
+print(video['title'], video['viewCount'])
 ```
 
-### Async Support
-
+**Async**
 ```python
 import asyncio
 from youtubesearchpython.future import VideosSearch, Video
 
 async def main():
-    search = VideosSearch('Python Tutorial', limit=5)
-    result = await search.next()
-    print(result)
-    
-    video = await Video.get('video_id_here')
-    print(video)
+    search = VideosSearch('Learn Python', limit=5)
+    print(search.result())
+    await search.next()          # next page
+    print(search.result())
+
+    video = await Video.get('aqz-KE-bpKQ')
+    print(video['title'])
 
 asyncio.run(main())
 ```
 
 ---
 
-## 📚 Documentation
+## Key Classes
 
-### Core Documentations
-- **[Async Page?](https://github.com/BillaSpace/yt-search-python/tree/legacy/youtubesearchpython/future)** - Future Async tab
-- **[API Reference](docs.md)** - Complete API documentation with all classes and methods
-- **[Usage Examples](docs/)** - Comprehensive examples for all features:
-  - [Search Examples](docs/search_examples.md) - All search classes with filters
-  - [Video & Extras Examples](docs/extras_examples.md) - Video, Playlist, Comments, etc.
-  - [Stream URL Examples](docs/stream_examples.md) - Direct stream URL fetching
-  - for stream url fetching services you must have `yt-dlp` already installed in your system
+**Search**
+- `VideosSearch`, `ChannelsSearch`, `PlaylistsSearch`, `CustomSearch`, `ChannelSearch`
 
-### Key Classes
+**Content**
+- `Video` — info + streaming formats (`Video.get`, `Video.getInfo`, `Video.getFormats`)
+- `Playlist` — one-shot `Playlist.get(...)`, or instantiate `Playlist(link)` for `.getNextVideos()` pagination
+- `Channel` — `Channel.get(...)`, or instantiate + `.init()` / `.next()` for pagination
+- `Comments` — `Comments.get(...)`, or instantiate + `.init()` / `.getNextComments()`
+- `Transcript` — `Transcript.get(link, params=<languageCode>)` to select a specific caption track
+- `Hashtag` — instantiate `Hashtag(tag, limit=...)` (fetches immediately) or `Hashtag.get(...)`
+- `Suggestions` — autocomplete text suggestions. `Suggestions.get(...)` for one-shot use, `Suggestions.session(...)` (async: same) to reuse a client across many calls
+- `Recommendations` — related/up-next videos for a video ID
 
-#### Search Classes
-- `VideosSearch` - Search for videos
-- `ChannelsSearch` - Search for channels
-- `PlaylistsSearch` - Search for playlists
-- `CustomSearch` - Search with custom filters
-- `ChannelSearch` - Search within a specific channel
+**Utility**
+- `StreamURLFetcher` — direct stream URLs (needs `yt-dlp` & `deno`installed in your system)
+- `ResultMode` — `.dict` or `.json` output
 
-#### Content Classes
-- `Video` - Get video information and formats
-- `Playlist` - Get playlist information and videos
-- `Channel` - Get channel information
-- `Comments` - Get video comments
-- `Transcript` - Get video transcripts/captions
-- `Suggestions` - Get search suggestions
-- `Recommendations` - Get video recommendations
-- `Hashtag` - Get videos by hashtag
-
-#### Utility Classes
-- `StreamURLFetcher` - Get direct stream URLs with multiple formats
-- `ResultMode` - Control output format (dict/json)
+Note: `Suggestions` (autocomplete text) and `Recommendations` (related videos) are deliberately separate classes — different endpoints, different data — not merged into one.
 
 ---
 
-## 💡 Examples
+## Examples
 
-### Advanced Search with Filters
-
+**Advanced search with filters**
 ```python
 from youtubesearchpython import CustomSearch, VideoSortOrder
 
-# Search videos sorted by view count
 search = CustomSearch('Python', VideoSortOrder.viewCount, limit=10)
 print(search.result())
 ```
 
-### Get Playlist Videos
-
+**Playlist videos (works with a URL or a bare ID)**
 ```python
 from youtubesearchpython import Playlist
 
-# Works with both URLs and IDs
 playlist = Playlist.get('PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK')
-print(f"Playlist: {playlist['title']}")
-print(f"Videos: {len(playlist['videos'])}")
+print(playlist['info']['title'], len(playlist['videos']))
 ```
 
-### Fetch Comments
-
+**Comments**
 ```python
 from youtubesearchpython import Comments
 
 comments = Comments.get('https://www.youtube.com/watch?v=aqz-KE-bpKQ')
-for comment in comments['result'][:5]:
-    print(f"{comment['author']}: {comment['content']}")
+for c in comments['result'][:5]:
+    print(c['author']['name'], ':', c['content'])
 ```
 
-### Get Search Suggestions
-
+**Search suggestions**
 ```python
 from youtubesearchpython import Suggestions
 
-suggestions = Suggestions.get('Arijit Singh', language='en', region='US')
-print(suggestions['result'])
+print(Suggestions.get('Arijit Singh', language='en', region='US'))
 ```
 
-For more examples, see the [examples directory](docs/examples/).
-
----
-
-## 🧪 Testing
-
-### Wanna Quick Test ?
-
-```bash
-cd tests
-python3 full_execution.py
-```
-
-This comprehensive test suite covers:
-- ✅ All search classes (Videos, Channels, Playlists, Custom)
-- ✅ Content retrieval (Video, Playlist, Channel)
-- ✅ Social features (Comments, Recommendations, Suggestions)
-- ✅ Advanced features (StreamURLFetcher, Transcript)
-- ✅ Both synchronous and asynchronous methods
-
-### Test Documentation
-See [tests/README.md](tests/README.md) for detailed testing information.
-
----
-
-## 🔧 Advanced Features
-
-### Pagination
-
+**Pagination**
 ```python
 search = VideosSearch('Python', limit=10)
 print(search.result())
-
-# Get next page
 search.next()
 print(search.result())
 ```
 
-### 🌎 Language & Region
-
+**Language & region**
 ```python
 search = VideosSearch('Music', limit=10, language='es', region='ES')
 ```
 
-### Custom Filters
-
-Available filters:
-- **Upload Date**: `VideoUploadDateFilter.lastHour`, `.today`, `.thisWeek`, `.thisMonth`, `.thisYear`
-- **Duration**: `VideoDurationFilter.short`, `.long`
-- **Sort Order**: `VideoSortOrder.relevance`, `.uploadDate`, `.viewCount`, `.rating`
+**Filters available**
+- Upload date: `VideoUploadDateFilter.lastHour`, `.today`, `.thisWeek`, `.thisMonth`, `.thisYear`
+- Duration: `VideoDurationFilter.short`, `.long`
+- Sort order: `VideoSortOrder.relevance`, `.uploadDate`, `.viewCount`, `.rating`
 
 ---
 
-## 🤝 Contributing
+## Known Limitations
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Being upfront about what this library can't do, rather than silently under-delivering:
+
+- **Mix / Radio playlists** (IDs starting with `RD…`) are auto-generated by YouTube through a different, session-based mechanism than regular playlists, and aren't returned by the standard browse endpoint this library uses. `Playlist.get()` will raise a clear `YouTubeParseError` identifying this case rather than crashing with an unrelated `TypeError` — but it won't fetch the mix's videos.
+- **Recommendations** reflect what YouTube's own backend returns for an anonymous, session-less request to the `/next` endpoint — without real watch history or a signed-in session, YouTube itself mixes in generic suggestions alongside genuinely related videos. This is backend behavior, not something a scraper can fully correct.
+- This library depends entirely on YouTube's internal response shapes, which change without notice. If something breaks, it's almost always a shape change on YouTube's end.
+
+---
+
+Covers all search classes, content retrieval, comments/recommendations/suggestions, `StreamURLFetcher`, transcripts — both sync and async. 
+
+---
+
+## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Commit and push
+4. Open a Pull Request
 
 ---
 
-## 📝 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
----
+## Disclaimer
 
-## ⚠️ Disclaimer 
+Not affiliated with YouTube or Google. Uses YouTube's publically available internal endpoints, which may change without notice. Use responsibly and in accordance with YouTube's Terms of Service.
 
-This library is not affiliated with YouTube or Google Inc. It uses YouTube's internal API which may change without notice. Use responsibly and in accordance with YouTube's Terms of Content usage and distribution Services.
+## Credits
 
----
-## 🔁 Credits
+Current maintainer: [Prakhar](https://github.com/BillaSpace) 
+·Original author: [Hitesh Kumar Saini](https://github.com/alexmercerind)
 
-- **Current Dev:** [Prakhar](https://github.com/BillaSpace)
-- **Old Author:** [Hitesh Kumar Saini](https://github.com/alexmercerind) 
+<details>
+<summary>Full acknowledgements</summary>
 
----
+- Thanks to [CertifiedCoder](https://github.com/CertifiedCoder) for work on the request layer in v2.0.0.
+- Built on top of the original `youtube-search-python` project and its contributors.
 
-
-## 🌟 Support & Future of the Library 
-
-- If you find this library useful, please consider to support the developer by giving a fork & ✳️ star on **[GitHub](https://github.com/BillaSpace/youtube-search-python)**
-
-- if i found this library is really useful n necessary for everyone i'll keep maintaining on [pypi](https://pypi.org/project/yt-search-python) as :
-~ `yt-search-python`
+</details>
 
 ---
 
 <div align="center">
 
-**Made with ❤️ for the community**
-
-[Report Bug](https://github.com/BillaSpace/youtube-search-python/issues) • [Request Feature](https://github.com/BillaSpace/youtube-search-python/issues)
+[Report a bug](https://github.com/BillaSpace/yt-search-python/issues) • [Request a feature](https://github.com/BillaSpace/yt-search-python/issues)
 
 </div>
