@@ -6,7 +6,7 @@
 
 ---
 
-## 🚀 Modern Async API [future] — New in v2.0.0
+## 🚀 Modern Async API [future] — New in v2.0.0 [ stays same in newer version with library optimizations ]
 
 ### yt-search-python introduces a fully modern asynchronous API under the youtubesearchpython.future module with modern Features that Not Even One Single Library offers in the world that is recommendations & Search Suggestions.
 
