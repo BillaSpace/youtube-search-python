@@ -1,6 +1,5 @@
 """
 Asynchronous implementation of yt-search-python.
-
 This module provides async/await versions of all search and retrieval operations.
 Use this for async applications, web frameworks (FastAPI, aiohttp), or when you need concurrent operations.
 """
@@ -13,8 +12,8 @@ from youtubesearchpython.core.constants import *
 
 
 __title__        = 'yt-search-python'
-__version__      = '2.0.1'    
-__author__       = 'PrakharShukla'
+__version__      = '2.1.1'    
+__author__       = 'Prakhar-Shukla'
 __license__      = 'MIT'
 
 __all__ = [
