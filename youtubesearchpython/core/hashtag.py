@@ -1,30 +1,39 @@
 import copy
 import json
 from typing import Union
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-import httpx
 
 from youtubesearchpython.core.constants import *
-from youtubesearchpython.handlers.componenthandler import ComponentHandler
+from youtubesearchpython.core.componenthandler import ComponentHandler
+from youtubesearchpython.core.requests import RequestCore
+from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubeParseError
 
 
-class HashtagCore(ComponentHandler):
-    response = None
-    resultComponents = []
-
-    def __init__(self, hashtag: str, limit: int, language: str, region: str, timeout: int):
+class HashtagCore(RequestCore, ComponentHandler):
+    '''
+    NOTE: this used to build requests with raw urllib.request instead of the
+    httpx-based RequestCore every other module uses. That meant no proxy
+    support, no shared timeout handling, and different headers than the
+    rest of the library - now unified.
+    '''
+    def __init__(self, hashtag: str, limit: int = 60, language: str = "en", region: str = "US", timeout: int = None):
+        RequestCore.__init__(self, timeout=timeout)
         self.hashtag = hashtag
         self.limit = limit
         self.language = language
-        self.region = region
-        self.timeout = timeout
+        self.region = (region or "US").upper()
         self.continuationKey = None
         self.params = None
+        self.response = None
+        self.resultComponents = []
 
     def sync_create(self):
         self._getParams()
         self._makeRequest()
+        self._getComponents()
+
+    async def async_create(self):
+        await self._asyncGetParams()
+        await self._asyncMakeRequest()
         self._getComponents()
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
@@ -41,9 +50,7 @@ class HashtagCore(ComponentHandler):
             self._getComponents()
         return bool(self.resultComponents)
 
-    def _getParams(self) -> None:
-        if not searchKey:
-            raise Exception("(searchKey) is not set in library.")
+    def _buildSearchBody(self) -> dict:
         requestBody = copy.deepcopy(requestPayload)
         requestBody['query'] = "#" + (self.hashtag or "")
         ctx = requestBody.setdefault('context', {})
@@ -52,103 +59,87 @@ class HashtagCore(ComponentHandler):
             'hl': self.language or client.get('hl'),
             'gl': self.region or client.get('gl'),
         })
-        requestBodyBytes = json.dumps(requestBody).encode('utf-8')
-        url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({'key': searchKey})
-        req = Request(url, data=requestBodyBytes, headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': userAgent})
-        try:
-            response = urlopen(req, timeout=self.timeout).read().decode('utf-8')
-        except Exception:
-            raise Exception('ERROR: Could not make request.')
-        data = json.loads(response)
+        return requestBody
+
+    def _buildBrowseBody(self) -> dict:
+        requestBody = copy.deepcopy(requestPayload)
+        requestBody['browseId'] = hashtagBrowseKey
+        requestBody['params'] = self.params
+        ctx = requestBody.setdefault('context', {})
+        client = ctx.setdefault('client', {})
+        client.update({
+            'hl': self.language or client.get('hl'),
+            'gl': self.region or client.get('gl'),
+        })
+        if self.continuationKey:
+            requestBody['continuation'] = self.continuationKey
+        return requestBody
+
+    def _extractParams(self, data: dict) -> None:
         content = self._getValue(data, contentPath) or []
         items = self._getValue(content, [0, 'itemSectionRenderer', 'contents']) or []
         for item in items:
             if hashtagElementKey in item:
                 self.params = self._getValue(item[hashtagElementKey], ['onTapCommand', 'browseEndpoint', 'params'])
                 return
+
+    def _getParams(self) -> None:
+        if not searchKey:
+            raise YouTubeRequestError("(searchKey) is not set in library.")
+        self.url = 'https://www.youtube.com/youtubei/v1/search?key=' + searchKey
+        self.data = self._buildSearchBody()
+        try:
+            response = self.syncPostRequest()
+        except Exception as e:
+            raise YouTubeRequestError(f'Failed to make hashtag search request: {str(e)}')
+        if response.status_code != 200:
+            raise YouTubeRequestError(f'Invalid status code {response.status_code} for hashtag search request')
+        self._extractParams(response.json())
 
     async def _asyncGetParams(self) -> None:
         if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody['query'] = "#" + (self.hashtag or "")
-        ctx = requestBody.setdefault('context', {})
-        client = ctx.setdefault('client', {})
-        client.update({
-            'hl': self.language or client.get('hl'),
-            'gl': self.region or client.get('gl'),
-        })
+            raise YouTubeRequestError("(searchKey) is not set in library.")
+        self.url = 'https://www.youtube.com/youtubei/v1/search?key=' + searchKey
+        self.data = self._buildSearchBody()
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    'https://www.youtube.com/youtubei/v1/search',
-                    params={'key': searchKey},
-                    headers={'User-Agent': userAgent},
-                    json=requestBody,
-                    timeout=self.timeout
-                )
-                data = response.json()
-        except Exception:
-            raise Exception('ERROR: Could not make request.')
-        content = self._getValue(data, contentPath) or []
-        items = self._getValue(content, [0, 'itemSectionRenderer', 'contents']) or []
-        for item in items:
-            if hashtagElementKey in item:
-                self.params = self._getValue(item[hashtagElementKey], ['onTapCommand', 'browseEndpoint', 'params'])
-                return
+            response = await self.asyncPostRequest()
+        except Exception as e:
+            raise YouTubeRequestError(f'Failed to make hashtag search request: {str(e)}')
+        if response.status_code != 200:
+            raise YouTubeRequestError(f'Invalid status code {response.status_code} for hashtag search request')
+        self._extractParams(response.json())
 
     def _makeRequest(self) -> None:
         if self.params is None:
+            self.response = None
             return
         if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody['browseId'] = hashtagBrowseKey
-        requestBody['params'] = self.params
-        ctx = requestBody.setdefault('context', {})
-        client = ctx.setdefault('client', {})
-        client.update({
-            'hl': self.language or client.get('hl'),
-            'gl': self.region or client.get('gl'),
-        })
-        if self.continuationKey:
-            requestBody['continuation'] = self.continuationKey
-        requestBodyBytes = json.dumps(requestBody).encode('utf-8')
-        url = 'https://www.youtube.com/youtubei/v1/browse' + '?' + urlencode({'key': searchKey})
-        req = Request(url, data=requestBodyBytes, headers={'Content-Type': 'application/json; charset=utf-8', 'User-Agent': userAgent})
+            raise YouTubeRequestError("(searchKey) is not set in library.")
+        self.url = 'https://www.youtube.com/youtubei/v1/browse?key=' + searchKey
+        self.data = self._buildBrowseBody()
         try:
-            self.response = urlopen(req, timeout=self.timeout).read().decode('utf-8')
-        except Exception:
-            raise Exception('ERROR: Could not make request.')
+            response = self.syncPostRequest()
+        except Exception as e:
+            raise YouTubeRequestError(f'Failed to make hashtag browse request: {str(e)}')
+        if response.status_code != 200:
+            raise YouTubeRequestError(f'Invalid status code {response.status_code} for hashtag browse request')
+        self.response = response.text
 
     async def _asyncMakeRequest(self) -> None:
         if self.params is None:
+            self.response = None
             return
         if not searchKey:
-            raise Exception("INNERTUBE API key (searchKey) is not set.")
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody['browseId'] = hashtagBrowseKey
-        requestBody['params'] = self.params
-        ctx = requestBody.setdefault('context', {})
-        client = ctx.setdefault('client', {})
-        client.update({
-            'hl': self.language or client.get('hl'),
-            'gl': self.region or client.get('gl'),
-        })
-        if self.continuationKey:
-            requestBody['continuation'] = self.continuationKey
+            raise YouTubeRequestError("(searchKey) is not set in library.")
+        self.url = 'https://www.youtube.com/youtubei/v1/browse?key=' + searchKey
+        self.data = self._buildBrowseBody()
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    'https://www.youtube.com/youtubei/v1/browse',
-                    params={'key': searchKey},
-                    headers={'User-Agent': userAgent},
-                    json=requestBody,
-                    timeout=self.timeout
-                )
-                self.response = response.text
-        except Exception:
-            raise Exception('ERROR: Could not make request.')
+            response = await self.asyncPostRequest()
+        except Exception as e:
+            raise YouTubeRequestError(f'Failed to make hashtag browse request: {str(e)}')
+        if response.status_code != 200:
+            raise YouTubeRequestError(f'Invalid status code {response.status_code} for hashtag browse request')
+        self.response = response.text
 
     def _getComponents(self) -> None:
         if self.response is None:
@@ -156,18 +147,27 @@ class HashtagCore(ComponentHandler):
         self.resultComponents = []
         try:
             data = json.loads(self.response)
-            if not self.continuationKey:
-                responseSource = self._getValue(data, hashtagVideosPath) or []
-            else:
-                responseSource = self._getValue(data, hashtagContinuationVideosPath) or []
-            for element in responseSource:
-                rich = self._getValue(element, [richItemKey, 'content']) or {}
-                if videoElementKey in rich:
-                    videoComponent = self._getVideoComponent(rich)
-                    self.resultComponents.append(videoComponent)
-                if len(self.resultComponents) >= self.limit:
-                    break
-            if responseSource:
-                self.continuationKey = self._getValue(responseSource[-1], continuationKeyPath)
-        except Exception:
-            raise Exception('ERROR: Could not parse YouTube response.')
+        except json.JSONDecodeError as e:
+            raise YouTubeParseError(f'Failed to parse JSON response for hashtag: {str(e)}')
+        if not self.continuationKey:
+            responseSource = self._getValue(data, hashtagVideosPath) or []
+        else:
+            responseSource = self._getValue(data, hashtagContinuationVideosPath) or []
+        for element in responseSource:
+            rich = self._getValue(element, [richItemKey, 'content']) or {}
+            if videoElementKey in rich:
+                videoComponent = self._getVideoComponent(rich)
+                self.resultComponents.append(videoComponent)
+            elif 'lockupViewModel' in rich:
+                lockupComponent = self._getLockupComponent(rich, findVideos=True, findChannels=False, findPlaylists=False)
+                if lockupComponent:
+                    self.resultComponents.append(lockupComponent)
+            elif 'lockupViewModel' in element:
+                lockupComponent = self._getLockupComponent(element, findVideos=True, findChannels=False, findPlaylists=False)
+                if lockupComponent:
+                    self.resultComponents.append(lockupComponent)
+            if len(self.resultComponents) >= self.limit:
+                break
+        if responseSource:
+            self.continuationKey = self._getValue(responseSource[-1], continuationKeyPath)
+            
