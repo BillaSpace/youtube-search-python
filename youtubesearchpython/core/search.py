@@ -30,21 +30,15 @@ class SearchCore(RequestCore, ComponentHandler):
         self._parseSource()
 
     def _getRequestBody(self):
-        ''' Fixes #47 '''
-        requestBody = copy.deepcopy(requestPayload)
-        requestBody['query'] = self.query
-        requestBody['client'] = {
-            'hl': self.language,
-            'gl': self.region,
-        }
+        overrides = {'query': self.query, 'client': {'hl': self.language, 'gl': self.region}}
         if self.searchPreferences:
-            requestBody['params'] = self.searchPreferences
+            overrides['params'] = self.searchPreferences
         if self.continuationKey:
-            requestBody['continuation'] = self.continuationKey
+            overrides['continuation'] = self.continuationKey
         self.url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({
             'key': searchKey,
         })
-        self.data = requestBody
+        self.data = self.buildInnertubeBody(**overrides)
 
     def _makeRequest(self) -> None:
         self._getRequestBody()
@@ -87,8 +81,9 @@ class SearchCore(RequestCore, ComponentHandler):
                     if continuationItemKey in element.keys():
                         self.continuationKey = self._getValue(element, continuationKeyPath)
             else:
-                self.responseSource = self._getValue(json.loads(self.response), fallbackContentPath)
-                self.continuationKey = self._getValue(self.responseSource[-1], continuationKeyPath)
+                self.responseSource = self._getValue(json.loads(self.response), fallbackContentPath) or []
+                if self.responseSource:
+                    self.continuationKey = self._getValue(self.responseSource[-1], continuationKeyPath)
         except json.JSONDecodeError as e:
             raise YouTubeParseError(f'Failed to parse JSON response: {str(e)}')
         except KeyError as e:
@@ -98,10 +93,8 @@ class SearchCore(RequestCore, ComponentHandler):
 
     def result(self, mode: int = ResultMode.dict) -> Union[str, dict]:
         '''Returns the search result.
-
         Args:
             mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
-
         Returns:
             Union[str, dict]: Returns JSON or dictionary.
         '''
@@ -112,10 +105,8 @@ class SearchCore(RequestCore, ComponentHandler):
 
     def _next(self) -> bool:
         '''Gets the subsequent search result. Call result
-
         Args:
             mode (int, optional): Sets the type of result. Defaults to ResultMode.dict.
-
         Returns:
             Union[str, dict]: Returns True if getting more results was successful.
         '''
@@ -151,9 +142,11 @@ class SearchCore(RequestCore, ComponentHandler):
             if playlistElementKey in element.keys() and findPlaylists:
                 self.resultComponents.append(self._getPlaylistComponent(element))
             if shelfElementKey in element.keys() and findVideos:
-                for shelfElement in self._getShelfComponent(element)['elements']:
-                    self.resultComponents.append(
-                        self._getVideoComponent(shelfElement, shelfTitle=self._getShelfComponent(element)['title']))
+                shelf = self._getShelfComponent(element)
+                for shelfElement in shelf['elements']:
+                    if videoElementKey in shelfElement.keys():
+                        self.resultComponents.append(
+                            self._getVideoComponent(shelfElement, shelfTitle=shelf['title']))
             if richItemKey in element.keys():
                 richItemElement = self._getValue(element, [richItemKey, 'content'])
                 if videoElementKey in richItemElement.keys() and findVideos:
