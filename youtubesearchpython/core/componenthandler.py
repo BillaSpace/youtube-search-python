@@ -35,7 +35,6 @@ def getVideoId(videoLink: str) -> str:
     try:
         parsed = urlparse(videoLink)
         host = (parsed.netloc or "").lower()
-
         if "youtu.be" in host:
             path = parsed.path.rstrip("/")
             if path:
@@ -43,16 +42,12 @@ def getVideoId(videoLink: str) -> str:
 
         if "youtube" in host or "youtube-nocookie" in host:
             qs = parse_qs(parsed.query)
-
             if "v" in qs and qs["v"]:
                 return qs["v"][0]
-
             parts = [p for p in parsed.path.split("/") if p]
-
             for i, p in enumerate(parts):
                 if p in ("embed", "v", "live") and i + 1 < len(parts):
                     return parts[i + 1]
-
             if parts:
                 return parts[-1]
         core = videoLink.split("?")[0].split("#")[0].rstrip("/")
@@ -62,7 +57,6 @@ def getVideoId(videoLink: str) -> str:
 
     except Exception:
         return videoLink
-
 
 class ComponentHandler:
     def _getVideoComponent(self, element: dict, shelfTitle: str = None) -> dict:
@@ -91,10 +85,8 @@ class ComponentHandler:
             },
         }
         component['link'] = 'https://www.youtube.com/watch?v=' + component['id']
-
         if component['channel']['id']:
             component['channel']['link'] = 'https://www.youtube.com/channel/' + component['channel']['id']
-
         component['shelfTitle'] = shelfTitle
         return component
 
@@ -135,8 +127,7 @@ class ComponentHandler:
     def _getLockupComponent(self, element: dict, findVideos: bool, findChannels: bool, findPlaylists: bool) -> dict:
         lockup = self._getValue(element, ["lockupViewModel"])
         if not lockup:
-            return None
-            
+            return None            
         contentType = self._getValue(lockup, ["contentType"])
         contentId = self._getValue(lockup, ["contentId"])
         
@@ -192,7 +183,6 @@ class ComponentHandler:
         channelsearch = []
         for element in elements:
             responsetype = None
-
             if 'gridPlaylistRenderer' in element:
                 element = element['gridPlaylistRenderer']
                 responsetype = 'gridplaylist'
@@ -266,9 +256,15 @@ class ComponentHandler:
 
     def _getShelfComponent(self, element: dict) -> dict:
         shelf = element[shelfElementKey]
+        title = self._getValue(shelf, ['title', 'simpleText'])
+        if title is None:
+            title = self._getValue(shelf, ['title', 'runs', 0, 'text'])
+        elements = self._getValue(shelf, ['content', 'verticalListRenderer', 'items'])
+        if elements is None:
+            elements = self._getValue(shelf, ['content', 'horizontalListRenderer', 'items'])
         return {
-            'title':                           self._getValue(shelf, ['title', 'simpleText']),
-            'elements':                        self._getValue(shelf, ['content', 'verticalListRenderer', 'items']),
+            'title':                           title,
+            'elements':                        elements or [],
         }
 
     def _getValue(self, source: dict, path: List[str]) -> Union[str, int, dict, None]:
@@ -289,3 +285,4 @@ class ComponentHandler:
                     value = None
                     break
         return value
+        
