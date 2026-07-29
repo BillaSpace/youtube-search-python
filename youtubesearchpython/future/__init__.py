@@ -6,21 +6,22 @@ Use this for async applications, web frameworks (FastAPI, aiohttp), or when you 
 """
 
 from youtubesearchpython.future.search import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, ChannelSearch
-from youtubesearchpython.future.extras import Video, Playlist, Suggestions, Hashtag, Comments, Transcript, Channel, Recommendations
+from youtubesearchpython.future.extras import Video, Playlist, Suggestions, SuggestionsSession, Hashtag, Comments, Transcript, Channel, Recommendations
 from youtubesearchpython.future.streamurlfetcher import StreamURLFetcher
 from youtubesearchpython.core.utils import *
 from youtubesearchpython.core.constants import *
 
 
-__title__        = 'youtube-search-python'
-__version__      = '2.0.0'    
-__author__       = 'Prakhar'
+__title__        = 'yt-search-python'
+__version__      = '2.0.1'    
+__author__       = 'PrakharShukla'
 __license__      = 'MIT'
 
 __all__ = [
     'Search', 'VideosSearch', 'ChannelsSearch', 'PlaylistsSearch', 
     'CustomSearch', 'ChannelSearch', 'Video', 'Playlist', 'Suggestions',
-    'Hashtag', 'Comments', 'Transcript', 'Channel', 'Recommendations', 'StreamURLFetcher',
+    'SuggestionsSession', 'Hashtag', 'Comments', 'Transcript', 'Channel',
+    'Recommendations', 'StreamURLFetcher',
     'ResultMode', 'SearchMode', 'VideoUploadDateFilter', 'VideoDurationFilter',
     'VideoSortOrder', 'ChannelRequestType', 'playlist_from_channel_id'
 ]
