@@ -210,48 +210,66 @@ class VideoCore(RequestCore):
                     }
         return best_thumb
 
-    def __findVideoDataInSearchResults(self, search_contents: List[dict], video_id: str) -> Optional[dict]:
-        """
-        Helper method to find video data in search API response.
-        Eliminates code duplication across multiple methods.
-        """
-        if not search_contents:
-            return None
-        for item in search_contents:
-            video_data = None
-            if itemSectionKey in item:
-                section_contents = getValue(item, [itemSectionKey, 'contents'])
-                if section_contents:
-                    for section_item in section_contents:
-                        if videoElementKey in section_item:
-                            v_data = section_item[videoElementKey]
-                            if getValue(v_data, ['videoId']) == video_id:
-                                return v_data
-            elif videoElementKey in item:
-                video_data = item[videoElementKey]
+    def __findVideoDataInSearchResults(self,search_contents:List[dict],video_id:str)->Optional[dict]:
+        if not search_contents:return None
+        stack=list(search_contents)
+        while stack:
+            item=stack.pop()
+            if not isinstance(item,dict):
+                if isinstance(item,list):stack.extend(item)
+                continue
+            if item.get("id")==video_id:
+                channel_id=getValue(item,["channel","id"])
+                return {
+                    "videoId":video_id,
+                    "title":{"runs":[{"text":item.get("title")}]},
+                    "lengthText":{"simpleText":item.get("duration")},
+                    "viewCountText":{"simpleText":getValue(item,["viewCount","text"])},
+                    "shortViewCountText":{"simpleText":getValue(item,["viewCount","short"])},
+                    "publishedTimeText":{"simpleText":item.get("publishedTime")},
+                    "thumbnail":{"thumbnails":item.get("thumbnails") or []},
+                    "ownerText":{"runs":[{"text":getValue(item,["channel","name"]),"navigationEndpoint":{"browseEndpoint":{"browseId":channel_id}}}]}
+                }
+            video_data=None
+            if videoElementKey in item:video_data=item[videoElementKey]
+            elif item.get("videoId")==video_id:video_data=item
             elif richItemKey in item:
-                rich_content = getValue(item, [richItemKey, 'content'])
-                if rich_content and videoElementKey in rich_content:
-                    video_data = rich_content[videoElementKey]
-                elif rich_content and "lockupViewModel" in rich_content:
-                    lockup = rich_content["lockupViewModel"]
-                    if getValue(lockup, ["contentId"]) == video_id:
-                        return {
-                            "videoId": video_id,
-                            "title": {"runs": [{"text": getValue(lockup, ["metadata", "lockupMetadataViewModel", "title", "content"])}]},
-                            "lengthText": {"simpleText": "0:00"},
-                            "viewCountText": {"simpleText": "0 views"},
-                            "publishedTimeText": {"simpleText": "Unknown"},
-                            "ownerText": {"runs": [{"text": "Unknown"}]}
-                        }
-
-            if video_data:
-                found_video_id = getValue(video_data, ['videoId'])
-                if found_video_id == video_id:
-                    return video_data
-                nav_video_id = getValue(video_data, ['navigationEndpoint', 'watchEndpoint', 'videoId'])
-                if nav_video_id == video_id:
-                    return video_data
+                rich=getValue(item,[richItemKey,"content"])
+                if isinstance(rich,dict):
+                    if videoElementKey in rich:video_data=rich[videoElementKey]
+                    elif "lockupViewModel" in rich:item=rich["lockupViewModel"]
+            if isinstance(video_data,dict):
+                found_id=getValue(video_data,["videoId"]) or getValue(video_data,["navigationEndpoint","watchEndpoint","videoId"])
+                if found_id==video_id:return video_data
+            lockup=item.get("lockupViewModel") if isinstance(item.get("lockupViewModel"),dict) else item if "contentId" in item else None
+            if isinstance(lockup,dict) and getValue(lockup,["contentId"])==video_id:
+                metadata=getValue(lockup,["metadata","lockupMetadataViewModel"]) or {}
+                title=getValue(metadata,["title","content"]) or getValue(metadata,["title","runs",0,"text"])
+                thumbnails=getValue(lockup,["contentImage","thumbnailViewModel","image","sources"]) or getValue(lockup,["contentImage","thumbnailViewModel","thumbnail","thumbnails"]) or []
+                owner_name=None
+                owner_id=None
+                rows=getValue(metadata,["metadata","contentMetadataViewModel","metadataRows"]) or []
+                for row in rows:
+                    for part in getValue(row,["metadataParts"]) or []:
+                        text_value=getValue(part,["text","content"])
+                        browse_id=getValue(part,["text","commandRuns",0,"onTap","innertubeCommand","browseEndpoint","browseId"])
+                        if browse_id:
+                            owner_id=browse_id
+                            owner_name=text_value
+                            break
+                    if owner_id:break
+                return {
+                    "videoId":video_id,
+                    "title":{"runs":[{"text":title}]},
+                    "lengthText":{"simpleText":None},
+                    "viewCountText":{"simpleText":None},
+                    "shortViewCountText":{"simpleText":None},
+                    "publishedTimeText":{"simpleText":None},
+                    "thumbnail":{"thumbnails":thumbnails},
+                    "ownerText":{"runs":[{"text":owner_name,"navigationEndpoint":{"browseEndpoint":{"browseId":owner_id}}}]}
+                }
+            for value in item.values():
+                if isinstance(value,(dict,list)):stack.append(value)
         return None
 
     def __getVideoDataFromSearch(self, video_id: str, video_title: Optional[str] = None) -> dict:
@@ -295,7 +313,7 @@ class VideoCore(RequestCore):
                             'text': getValue(video_data, ['viewCountText', 'simpleText']),
                             'short': getValue(video_data, ['shortViewCountText', 'simpleText'])
                         }
-                        result['thumbnails']=[x for x in (getValue(video_data,['thumbnail','thumbnails']) or []) if isinstance(x,dict) and f"/vi/{video_id}/" in x.get('url','')]
+                        result['thumbnails']=[x for x in (getValue(video_data,['thumbnail','thumbnails']) or []) if isinstance(x,dict) and f"/vi/{video_id}/" in x.get("url","")]
                         channel_id=getValue(video_data,['ownerText','runs',0,'navigationEndpoint','browseEndpoint','browseId'])
                         result['channel']={
                             'name':getValue(video_data,['ownerText','runs',0,'text']),
@@ -352,7 +370,7 @@ class VideoCore(RequestCore):
                             'text': getValue(video_data, ['viewCountText', 'simpleText']),
                             'short': getValue(video_data, ['shortViewCountText', 'simpleText'])
                         }
-                        result['thumbnails']=[x for x in (getValue(video_data,['thumbnail','thumbnails']) or []) if isinstance(x,dict) and f"/vi/{video_id}/" in x.get('url','')]
+                        result['thumbnails']=[x for x in (getValue(video_data,['thumbnail','thumbnails']) or []) if isinstance(x,dict) and f"/vi/{video_id}/" in x.get("url","")]
                         channel_id=getValue(video_data,['ownerText','runs',0,'navigationEndpoint','browseEndpoint','browseId'])
                         result['channel']={
                             'name':getValue(video_data,['ownerText','runs',0,'text']),
@@ -374,8 +392,8 @@ class VideoCore(RequestCore):
     def __enhanceThumbnails(self, thumbnails: List[dict], video_id: str, search_api_data: Optional[dict] = None) -> List[dict]:
         if not thumbnails or not video_id:
             return thumbnails
-        enhanced=[thumb for thumb in thumbnails if isinstance(thumb,dict) and f"/vi/{video_id}/" in thumb.get('url','')]
-        existing_urls={thumb.get('url','') for thumb in enhanced}
+        enhanced=[thumb for thumb in thumbnails if isinstance(thumb,dict) and f"/vi/{video_id}/" in thumb.get("url","")]
+        existing_urls={thumb.get("url","") for thumb in enhanced}
         existing_base_urls = {url.split('?')[0] if '?' in url else url for url in existing_urls}
         standard_thumbnails = [
             {"url": f"https://i.ytimg.com/vi/{video_id}/default.jpg", "width": 120, "height": 90},
@@ -391,7 +409,7 @@ class VideoCore(RequestCore):
             if base_url not in existing_base_urls:
                 if self.__checkThumbnailExists(base_url):
                     enhanced.append(thumb)
-
+                    
         if search_api_data and search_api_data.get('hq720Thumbnail'):
             optimized_hq720 = search_api_data['hq720Thumbnail']
         else:
@@ -407,9 +425,10 @@ class VideoCore(RequestCore):
     async def __enhanceThumbnailsAsync(self, thumbnails: List[dict], video_id: str, search_api_data: Optional[dict] = None) -> List[dict]:
         if not thumbnails or not video_id:
             return thumbnails
-        enhanced=[thumb for thumb in thumbnails if isinstance(thumb,dict) and f"/vi/{video_id}/" in thumb.get('url','')]
-        existing_urls={thumb.get('url','') for thumb in enhanced}
+        enhanced=[thumb for thumb in thumbnails if isinstance(thumb,dict) and f"/vi/{video_id}/" in thumb.get("url","")]
+        existing_urls={thumb.get("url","") for thumb in enhanced}
         existing_base_urls = {url.split('?')[0] if '?' in url else url for url in existing_urls}
+
         standard_thumbnails = [
             {"url": f"https://i.ytimg.com/vi/{video_id}/default.jpg", "width": 120, "height": 90},
             {"url": f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg", "width": 320, "height": 180},
