@@ -33,7 +33,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [2.0.0] - Current Release
+## [2.0.0] - Previous Release
 
 ### Added
 - 📱 ANDROID client as default
@@ -64,4 +64,34 @@ from youtubesearchpython import VideosSearch
 
 ---
 
-[2.0.0]: https://github.com/BillaSpace/youtube-search-python/releases/tag/v2.0.0
+[2.0.0]: https://github.com/BillaSpace/yt-search-python/releases/tag/v2.0.0
+
+
+## [2.1.1] - 2026-07-30
+
+- fix: eliminate request-layer fd leak, dedupe HTTP/component handlers, fix crashes across hashtag/playlist/comments/transcript
+
+- Replace per-call ephemeral httpx clients with a single pooled sync+async
+  client shared across the whole library (root cause of "Too many open
+  files" under sustained load)
+- Add one canonical innertube request-body builder; fixes a recurring bug
+  where hl/gl were set on a dead top-level "client" key instead of nested
+  under context.client (search, channelsearch, hashtag comments,
+  recommendations, video fallback search, legacy requesthandler)
+- Fix Suggestions.get being permanently unreachable due to a duplicate
+  method name silently overwriting it in the class body (sync + async)
+- Fix Hashtag.get missing required constructor args; give Hashtag/Channel/
+  Comments real instance APIs instead of static-only stubs
+- Fix Playlist 'NoneType' object is not iterable crash; add graceful
+  Mix/Radio playlist detection instead of a bare crash
+- Fix a NameError crash in legacy comment parsing (undefined variable)
+- Fix Video.getFormats referencing a nonexistent attribute
+- Fix Transcript language-selection param being silently ignored
+- Fix shelf title returning null for runs-based titles; fix a
+  trailing-comma bug that wrapped playlist thumbnails in a 1-tuple
+- Fix a crash in the wildcard JSON path-resolver on missing intermediate
+  keys
+- Dedupe two independent componenthandler.py copies and a third urllib-
+  based request implementation into the canonical httpx-based one
+- Strip leftover debug prints and disk writes (comments_response.json)
+- Remove scratch/debug test scripts; rewrite README.md for better readability & set of examples exclusively 
