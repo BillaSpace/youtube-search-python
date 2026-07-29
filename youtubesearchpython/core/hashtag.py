@@ -9,12 +9,6 @@ from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubePars
 
 
 class HashtagCore(RequestCore, ComponentHandler):
-    '''
-    NOTE: this used to build requests with raw urllib.request instead of the
-    httpx-based RequestCore every other module uses. That meant no proxy
-    support, no shared timeout handling, and different headers than the
-    rest of the library - now unified.
-    '''
     def __init__(self, hashtag: str, limit: int = 60, language: str = "en", region: str = "US", timeout: int = None):
         RequestCore.__init__(self, timeout=timeout)
         self.hashtag = hashtag
