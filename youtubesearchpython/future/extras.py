@@ -44,14 +44,35 @@ class Video:
 
 
 class Suggestions:
+    '''Autocomplete search suggestions (unrelated to Recommendations, which
+    fetches related/up-next *videos* for a given video ID - kept as
+    separate classes on purpose, not to be merged).
+
+    NOTE: this used to define `get` twice in this class body - a
+    @staticmethod one-shot version, then an instance version further down.
+    The second definition silently overwrote the first in the class dict,
+    so `Suggestions.get(query, ...)` was actually calling the unbound
+    instance method with `query` bound to `self` -> AttributeError.
+    `get` now stays a single staticmethod (matches how it's actually used
+    everywhere in this codebase); reusable-session usage lives under
+    `session()` instead, so both styles work without colliding.
+    '''
     @staticmethod
     async def get(
         query: str, language: str = "en", region: str = "US", mode: int = ResultMode.dict
     ):
         suggestionsInternal = SuggestionsCore(language=language, region=region)
-        suggestions = await suggestionsInternal._getAsync(query, mode)
-        return suggestions
+        return await suggestionsInternal._getAsync(query, mode)
 
+    @staticmethod
+    def session(language: str = "en", region: str = "US") -> "SuggestionsSession":
+        '''Returns a reusable session object for repeated queries without
+        recreating the underlying client each time:
+        `s = Suggestions.session(); await s.get("query")`.'''
+        return SuggestionsSession(language, region)
+
+
+class SuggestionsSession:
     def __init__(self, language: str = "en", region: str = "US"):
         self.suggestionsInternal = SuggestionsCore(language=language, region=region)
 
@@ -175,10 +196,9 @@ class Channel(ChannelCore):
         await channel_core.async_create()
         return channel_core.result
 
-
 class Recommendations:
     @staticmethod
     async def get(videoId: str, timeout: int = 2) -> Union[dict, None]:
         recommendations_core = RecommendationsCore(videoId, timeout)
         await recommendations_core.async_create()
-        return recommendations_core.resultComponents
+        return recommendations_core.resultComponents        
