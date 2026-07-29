@@ -4,7 +4,6 @@ import itertools
 import json
 from typing import Iterable, Mapping, Tuple, TypeVar, Union, List
 from urllib.parse import urlencode, unquote
-from urllib.request import Request, urlopen
 
 from youtubesearchpython.core.componenthandler import getVideoId, getValue
 from youtubesearchpython.core.constants import *
@@ -30,21 +29,18 @@ class CommentsCore(RequestCore):
     def prepare_continuation_request(self):
         self.data = copy.deepcopy(requestPayload)
         self.data["videoId"] = getVideoId(self.videoLink)
-        self.data["client"] = {"hl": "en", "gl": "US"}
+        self.data.setdefault("context", {}).setdefault("client", {}).update({"hl": "en", "gl": "US"})
         self.url = f"https://www.youtube.com/youtubei/v1/next?key={searchKey}"
 
     def prepare_comments_request(self):
         self.data = copy.deepcopy(requestPayload)
         self.data["continuation"] = self.continuationKey
-        self.data["client"] = {"hl": "en", "gl": "US"}
+        self.data.setdefault("context", {}).setdefault("client", {}).update({"hl": "en", "gl": "US"})
 
     def parse_source(self):
-        with open('comments_response.json', 'w', encoding='utf-8') as f:
-             json.dump(self.response.json(), f, indent=2)
         response_json = self.response.json()
         self.responseSource = []
         self.entities = {}
-
         mutations = getValue(response_json, ["frameworkUpdates", "entityBatchUpdate", "mutations"])
         if mutations:
             for m in mutations:
@@ -57,17 +53,13 @@ class CommentsCore(RequestCore):
         for ep in endpoints:
             items = getValue(ep, ["appendContinuationItemsAction", "continuationItems"])
             if not items:
-                items = getValue(ep, ["reloadContinuationItemsCommand", "continuationItems"])
-            
+                items = getValue(ep, ["reloadContinuationItemsCommand", "continuationItems"])            
             if items:
-                # Filter out header renderers if we only want comments
                 for item in items:
                     if "commentThreadRenderer" in item:
                          self.responseSource.append(item)
                     elif "continuationItemRenderer" in item:
                          self.continuationKey = getValue(item, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
-        
-        print(f"DEBUG: Found {len(self.responseSource)} comment items and {len(self.entities)} entities.")
 
     def parse_continuation_source(self):
         response_json = self.response.json()
@@ -138,24 +130,19 @@ class CommentsCore(RequestCore):
                     if not panel_render:
                         continue
                     if getValue(panel_render, ["targetId"]) == "engagement-panel-comments-section":
-                        # Find continuationItemRenderer anywhere in the panel content
                         content = getValue(panel_render, ["content", "sectionListRenderer", "contents"])
                         if content:
-                            for item in content:
-                                # Look specifically for continuationItemRenderer, potentially nested
+                            for item in content:                 
                                 token = getValue(item, ["continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
                                 if not token:
-                                    token = getValue(item, ["itemSectionRenderer", "contents", 0, "continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])
-                                
+                                    token = getValue(item, ["itemSectionRenderer", "contents", 0, "continuationItemRenderer", "continuationEndpoint", "continuationCommand", "token"])                         
                                 if token:
                                     self.continuationKey = token
-                                    print(f"DEBUG: Found comment continuation key: {self.continuationKey[:30]}...")
                                     return
             else:
                 continuation = getValue(response_json, path)
                 if continuation:
                     self.continuationKey = continuation
-                    print(f"DEBUG: Found comment continuation key: {self.continuationKey[:30]}...")
                     return
         
         self.continuationKey = None
@@ -164,8 +151,6 @@ class CommentsCore(RequestCore):
         self.prepare_comments_request()
         self.response = self.syncPostRequest()
         if self.response.status_code == 200:
-            with open('comments_response.json', 'w', encoding='utf-8') as f:
-                json.dump(self.response.json(), f, indent=2)
             self.parse_source()
 
     def sync_make_continuation_request(self):
@@ -187,19 +172,15 @@ class CommentsCore(RequestCore):
         self.response = await self.asyncPostRequest()
         if self.response.status_code == 200:
             self.parse_continuation_source()
-            # Don't raise error if continuation key is None - video might not have comments
-            # The comment request will handle empty results gracefully
         else:
             raise YouTubeRequestError(f"Status code is not 200: {self.response.status_code}")
 
     def sync_create(self):
         self.sync_make_continuation_request()
-        # Only make comment request if we have a continuation key
         if self.continuationKey:
             self.sync_make_comment_request()
             self.__getComponents()
-        else:
-            # No comments available - set empty result
+        else:  
             self.commentsComponent = {"result": []}
 
     def sync_create_next(self):
@@ -209,12 +190,10 @@ class CommentsCore(RequestCore):
 
     async def async_create(self):
         await self.async_make_continuation_request()
-        # Only make comment request if we have a continuation key
         if self.continuationKey:
             await self.async_make_comment_request()
             self.__getComponents()
         else:
-            # No comments available - set empty result
             self.commentsComponent = {"result": []}
 
     async def async_create_next(self):
@@ -228,9 +207,7 @@ class CommentsCore(RequestCore):
             return
         
         for item in self.responseSource:
-            comment_render = getValue(item, ["commentThreadRenderer", "comment", "commentRenderer"])
-            
-            # Try newer commentViewModel if commentRenderer is missing
+            comment_render = getValue(item, ["commentThreadRenderer", "comment", "commentRenderer"])        
             if not comment_render:
                 cvm = getValue(item, ["commentThreadRenderer", "commentViewModel", "commentViewModel"])
                 if cvm:
@@ -268,9 +245,6 @@ class CommentsCore(RequestCore):
                 continue
                 
             try:
-                # DEBUG: print found comment author
-                author_name = getValue(comment_render, ["authorText", "simpleText"])
-                # print(f"DEBUG: Processing comment by: {author_name}")
                 j = {
                     "id": getValue(comment_render, ["commentId"]),
                     "author": {
@@ -278,23 +252,22 @@ class CommentsCore(RequestCore):
                         "name": getValue(comment_render, ["authorText", "simpleText"]),
                         "thumbnails": getValue(comment_render, ["authorThumbnail", "thumbnails"])
                     },
-                    "content": "".join([r.get("text", "") for r in (getValue(comment, ["contentText", "runs"]) or [])]),
-                    "published": getValue(comment, ["publishedTimeText", "runs", 0, "text"]),
-                    "isLiked": getValue(comment, ["isLiked"]),
-                    "authorIsChannelOwner": getValue(comment, ["authorIsChannelOwner"]),
-                    "voteStatus": getValue(comment, ["voteStatus"]),
+                    "content": "".join([r.get("text", "") for r in (getValue(comment_render, ["contentText", "runs"]) or [])]),
+                    "published": getValue(comment_render, ["publishedTimeText", "runs", 0, "text"]),
+                    "isLiked": getValue(comment_render, ["isLiked"]),
+                    "authorIsChannelOwner": getValue(comment_render, ["authorIsChannelOwner"]),
+                    "voteStatus": getValue(comment_render, ["voteStatus"]),
                     "votes": {
-                        "simpleText": getValue(comment, ["voteCount", "simpleText"]),
-                        "label": getValue(comment, ["voteCount", "accessibility", "accessibilityData", "label"])
+                        "simpleText": getValue(comment_render, ["voteCount", "simpleText"]),
+                        "label": getValue(comment_render, ["voteCount", "accessibility", "accessibilityData", "label"])
                     },
-                    "replyCount": getValue(comment, ["replyCount"]),
+                    "replyCount": getValue(comment_render, ["replyCount"]),
                 }
                 comments.append(j)
             except (KeyError, AttributeError, IndexError, TypeError):
                 pass
 
         self.commentsComponent["result"].extend(comments)
-        # continuationKey already updated in parse_source or we can re-check here if needed
         if not self.continuationKey:
              last_item = self.responseSource[-1] if self.responseSource else None
              if last_item and "continuationItemRenderer" in last_item:
