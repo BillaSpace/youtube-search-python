@@ -5,8 +5,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="yt-search-python",
-    version="2.0.0",
-    author="Prakhar",
+    version="2.1.1",
+    author="Prakhar-Shukla",
     license="MIT",
     author_email="srvopus@gmail.com",
     description="Search YouTube contents without YouTube Data API v3. Professionally maintained fork with modern Sync & Async Python support.",
