@@ -5,7 +5,6 @@ import json
 import re
 from typing import Iterable, Mapping, Tuple, TypeVar, Union, List, Optional
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
 from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.requests import RequestCore
@@ -96,6 +95,7 @@ class PlaylistCore(RequestCore):
             id = self.url
         
         browseId = "VL" + id if not id.startswith("VL") else id
+        self.playlistId = id
 
         self.url = 'https://www.youtube.com/youtubei/v1/browse' + '?' + urlencode({
             'key': searchKey,
@@ -144,13 +144,47 @@ class PlaylistCore(RequestCore):
             raise YouTubeParseError(f'Failed to parse YouTube playlist response: {str(e)}')
 
     def __getComponents(self) -> None:
-        if "sidebar" not in self.responseSource:
-            raise YouTubeParseError("sidebar missing from response")
-        sidebar = self.responseSource["sidebar"]["playlistSidebarRenderer"]["items"]
-        inforenderer = sidebar[0]["playlistSidebarPrimaryInfoRenderer"]
-        channel_details_available = len(sidebar) != 1
-        channelrenderer = sidebar[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"] if channel_details_available else None
+        has_sidebar = "sidebar" in self.responseSource
+        if has_sidebar:
+            sidebar = self.responseSource["sidebar"]["playlistSidebarRenderer"]["items"]
+            inforenderer = sidebar[0]["playlistSidebarPrimaryInfoRenderer"]
+            channel_details_available = len(sidebar) != 1
+            channelrenderer = sidebar[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"] if channel_details_available else None
+        else:
+            # Seen on some responses with no sidebar at all - most notably
+            # auto-generated Mix/Radio playlists (ID starting with "RD"),
+            # which YouTube doesn't expose the same "editable playlist" info
+            # for. Don't crash outright: still try to find a video list, and
+            # only fail once we're sure there's genuinely nothing to parse.
+            inforenderer = {}
+            channelrenderer = None
+            channel_details_available = False
         videorenderer: list = self.__getFirstValue(self.responseSource, ["contents", "twoColumnBrowseResultsRenderer", "tabs", None, "tabRenderer", "content", "sectionListRenderer", "contents", None, "itemSectionRenderer", "contents", None, "playlistVideoListRenderer", "contents"])
+        if videorenderer is None:
+            # Fallback shape seen on some playlist responses (e.g. mix/radio
+            # playlists, or when the video list sits directly under the tab
+            # content instead of being wrapped in an itemSectionRenderer).
+            videorenderer = self.__getFirstValue(self.responseSource, ["contents", "twoColumnBrowseResultsRenderer", "tabs", None, "tabRenderer", "content", "sectionListRenderer", "contents", None, "playlistVideoListRenderer", "contents"])
+        if videorenderer is None:
+            # Radio/mix responses sometimes use a single-column layout instead
+            videorenderer = self.__getFirstValue(self.responseSource, ["contents", "singleColumnBrowseResultsRenderer", "tabs", None, "tabRenderer", "content", "sectionListRenderer", "contents", None, "itemSectionRenderer", "contents", None, "playlistVideoListRenderer", "contents"])
+        if videorenderer is None:
+            videorenderer = []
+        if not has_sidebar and not videorenderer:
+            is_mix = getattr(self, 'playlistId', '').upper().startswith("RD")
+            if is_mix:
+                raise YouTubeParseError(
+                    "Could not parse this playlist: it looks like an auto-generated "
+                    "Mix/Radio playlist (ID starts with 'RD'). YouTube serves these "
+                    "through a different, session-based mechanism than regular playlists "
+                    "and doesn't return them in the standard browse response this library "
+                    "uses - Mix/Radio playlists are not supported yet."
+                )
+            raise YouTubeParseError(
+                "Could not parse this playlist: no sidebar and no video list found in "
+                "the response. The playlist may be private, deleted, age-restricted, or "
+                "region-locked."
+            )
         videos = []
         for video in videorenderer:
             try:
@@ -211,7 +245,6 @@ class PlaylistCore(RequestCore):
                                                ['onResponseReceivedActions', 0, 'appendContinuationItemsAction',
                                                 'continuationItems'])
         if continuationElements is None:
-            # YouTube Backend issue outdated but still worth it - See https://github.com/alexmercerind/youtube-search-python/issues/157
             return
         for videoElement in continuationElements:
             if playlistVideoKey in videoElement.keys():
@@ -262,7 +295,7 @@ class PlaylistCore(RequestCore):
                         component['thumbnails'] = self.__getValue(infoElement,
                                                                   [playlistPrimaryInfoKey, 'thumbnailRenderer',
                                                                    'playlistCustomThumbnailRenderer', 'thumbnail',
-                                                                   'thumbnails']),
+                                                                   'thumbnails'])
                     component['link'] = 'https://www.youtube.com/playlist?list=' + component['id']
                     playlistComponent.update(component)
                 if playlistSecondaryInfoKey in infoElement.keys():
@@ -326,23 +359,31 @@ class PlaylistCore(RequestCore):
     def __getValue(self, source: dict, path: Iterable[str]) -> Union[str, int, dict, None]:
         value = source
         for key in path:
+            if value is None:
+                return None
             if type(key) is str:
-                if key in value.keys():
+                if isinstance(value, dict) and key in value.keys():
                     value = value[key]
                 else:
                     value = None
                     break
             elif type(key) is int:
-                if len(value) != 0:
-                    value = value[key]
+                if isinstance(value, (list, tuple)) and len(value) != 0:
+                    try:
+                        value = value[key]
+                    except IndexError:
+                        value = None
+                        break
                 else:
                     value = None
                     break
         return value
 
     def __getAllWithKey(self, source: Iterable[Mapping[K, T]], key: K) -> Iterable[T]:
+        if not source:
+            return
         for item in source:
-            if key in item:
+            if item and key in item:
                 yield item[key]
 
     def __getValueEx(self, source: dict, path: List[str]) -> Iterable[Union[str, int, dict, None]]:
