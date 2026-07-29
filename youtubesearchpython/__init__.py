@@ -1,6 +1,6 @@
 """
 youtube-search-python as yt-search-python (upgraded & enhanced)
-This is a maintained fork by Prakhar shukla with Modern fixes for httpx>=0.28.1+ with Advanced Features.
+This is a maintained fork by Prakhar shukla with Modern fixes for httpx>=0.28.1+ & Advanced Features.
 Original project by Hitesh Kumar Saini (alexmercerind).
 """
 
