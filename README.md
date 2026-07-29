@@ -174,13 +174,15 @@ Not affiliated with YouTube or Google. Uses YouTube's publically available inter
 
 ## Credits
 
-Current maintainer: [Prakhar](https://github.com/BillaSpace) 
-·Original author: [Hitesh Kumar Saini](https://github.com/alexmercerind)
+» Current maintainer: [Prakhar Shukla](https://github.com/BillaSpace) 
+
+» Original author: [Hitesh Kumar Saini](https://github.com/alexmercerind)
 
 <details>
 <summary>Full acknowledgements</summary>
 
-- Thanks to [CertifiedCoder](https://github.com/CertifiedCoder) for work on the request layer in v2.0.0.
+- Thanks to [CertifiedCoder](https://github.com/CertifiedCoder) for his work on the request layer[ v2.0.0.]
+- 
 - Built on top of the original `youtube-search-python` project and its contributors.
 
 </details>
@@ -189,6 +191,7 @@ Current maintainer: [Prakhar](https://github.com/BillaSpace)
 
 <div align="center">
 
-[Report a bug](https://github.com/BillaSpace/yt-search-python/issues) • [Request a feature](https://github.com/BillaSpace/yt-search-python/issues)
+• [Report a bug](https://github.com/BillaSpace/yt-search-python/issues) 
+• [Request a feature](https://github.com/BillaSpace/yt-search-python/issues)
 
 </div>
