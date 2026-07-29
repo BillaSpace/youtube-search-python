@@ -9,6 +9,15 @@ from youtubesearchpython.core.componenthandler import ComponentHandler, getValue
 
 
 class RecommendationsCore(RequestCore, ComponentHandler):
+    """
+    Scrapes the "up next" / related videos rail from the same `/next`
+    endpoint the watch page uses. NOTE: without a signed-in session or real
+    watch history, YouTube's own backend returns a mix of genuinely related
+    videos and generic session-based suggestions for anonymous requests -
+    this is a backend behavior, not something a scraper can fully correct.
+    Only pass `en`/`US` as defaults; callers wanting other locales should
+    fork this class or open an issue to make it configurable.
+    """
     def __init__(self, videoId: str, timeout: Optional[int] = None):
         super().__init__(timeout=timeout)
         self.videoId = videoId
@@ -21,7 +30,7 @@ class RecommendationsCore(RequestCore, ComponentHandler):
         })
         self.data = copy.deepcopy(requestPayload)
         self.data["videoId"] = self.videoId
-        self.data["client"] = {"hl": "en", "gl": "US"}
+        self.data.setdefault("context", {}).setdefault("client", {}).update({"hl": "en", "gl": "US"})
 
     def parse_response(self, response_json: dict):
         self.resultComponents = []
@@ -36,7 +45,6 @@ class RecommendationsCore(RequestCore, ComponentHandler):
 
         if secondary_results:
             for item in secondary_results:
-                # Try lockupViewModel first as it's the escape way 
                 if "lockupViewModel" in item:
                     component = self._getLockupComponent(item, findVideos=True, findChannels=False, findPlaylists=False)
                     if component:
