@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 import httpx
 
 from youtubesearchpython.core.constants import *
-from youtubesearchpython.core.requests import RequestCore
+from youtubesearchpython.core.requests import RequestCore, _get_sync_client, _get_async_client
 from youtubesearchpython.core.componenthandler import getValue, getVideoId
 from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubeParseError
 from youtubesearchpython.core.utils import (
@@ -181,17 +181,16 @@ class VideoCore(RequestCore):
 
     def __checkThumbnailExists(self, url: str) -> bool:
         try:
-            response = httpx.head(url, headers={"User-Agent": userAgent}, timeout=2, follow_redirects=True)
+            response = _get_sync_client().head(url, headers={"User-Agent": userAgent}, timeout=2, follow_redirects=True)
             return response.status_code == 200
-        except (httpx.RequestError, httpx.HTTPStatusError, Exception):
+        except Exception:
             return False
 
     async def __checkThumbnailExistsAsync(self, url: str) -> bool:
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.head(url, headers={"User-Agent": userAgent}, timeout=2, follow_redirects=True)
-                return response.status_code == 200
-        except (httpx.RequestError, httpx.HTTPStatusError, Exception):
+            response = await _get_async_client().head(url, headers={"User-Agent": userAgent}, timeout=2, follow_redirects=True)
+            return response.status_code == 200
+        except Exception:
             return False
 
     def __getBestHq720FromThumbnails(self, thumbnails: List[dict]) -> Union[dict, None]:
@@ -219,8 +218,7 @@ class VideoCore(RequestCore):
         Eliminates code duplication across multiple methods.
         """
         if not search_contents:
-            return None
-        
+            return None        
         for item in search_contents:
             video_data = None
             if itemSectionKey in item:
@@ -274,33 +272,23 @@ class VideoCore(RequestCore):
         if video_title:
             search_queries.append(video_title)
         search_queries.append(f"https://www.youtube.com/watch?v={video_id}")
-        search_queries.append(video_id)
-        
+        search_queries.append(video_id)        
         for query in search_queries:
             try:
-                request_body = copy.deepcopy(requestPayload)
-                request_body['query'] = query
-                request_body['client'] = {
-                    'hl': 'en',
-                    'gl': 'US',
-                }
-                
+                request_body = self.buildInnertubeBody(query=query, client={'hl': 'en', 'gl': 'US'})                
                 url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({'key': searchKey})
-                response = httpx.post(
+                response = _get_sync_client().post(
                     url,
                     headers={"User-Agent": userAgent, "Content-Type": "application/json"},
                     json=request_body,
-                    timeout=self.timeout if self.timeout else 5
-                )
-                
+                    timeout=self.timeout if self.timeout else 10
+                )                
                 if response.status_code == 200:
                     data = response.json()
                     contents = getValue(data, contentPath)
-                    fallback_contents = getValue(data, fallbackContentPath)
-                    
+                    fallback_contents = getValue(data, fallbackContentPath)                  
                     search_contents = contents if contents else fallback_contents
-                    video_data = self.__findVideoDataInSearchResults(search_contents, video_id)
-                    
+                    video_data = self.__findVideoDataInSearchResults(search_contents, video_id)                    
                     if video_data:
                         result['title'] = getValue(video_data, ['title', 'runs', 0, 'text'])
                         result['publishedTime'] = getValue(video_data, ['publishedTimeText', 'simpleText']) or getValue(video_data, ['publishedTimeText', 'runs', 0, 'text'])
@@ -314,18 +302,15 @@ class VideoCore(RequestCore):
                             'name': getValue(video_data, ['ownerText', 'runs', 0, 'text']),
                             'id': getValue(video_data, ['ownerText', 'runs', 0, 'navigationEndpoint', 'browseEndpoint', 'browseId']),
                             'link': 'https://www.youtube.com/channel/' + (getValue(video_data, ['ownerText', 'runs', 0, 'navigationEndpoint', 'browseEndpoint', 'browseId']) or "")
-                        }
-                        
+                        }               
                         if result['thumbnails']:
                             best_thumb = self.__getBestHq720FromThumbnails(result['thumbnails'])
                             if best_thumb:
-                                result['hq720Thumbnail'] = best_thumb
-                        
+                                result['hq720Thumbnail'] = best_thumb                   
                         if result['title']:
                             break
             except Exception:
-                continue
-        
+                continue        
         return result
 
     async def __getVideoDataFromSearchAsync(self, video_id: str, video_title: Optional[str] = None) -> dict:
@@ -338,40 +323,28 @@ class VideoCore(RequestCore):
             'thumbnails': None,
             'channel': {'name': None, 'id': None, 'link': None},
             'link': f"https://www.youtube.com/watch?v={video_id}"
-        }
-        
+        }        
         search_queries = []
         if video_title:
             search_queries.append(video_title)
         search_queries.append(f"https://www.youtube.com/watch?v={video_id}")
-        search_queries.append(video_id)
-        
+        search_queries.append(video_id)        
         for query in search_queries:
             try:
-                request_body = copy.deepcopy(requestPayload)
-                request_body['query'] = query
-                request_body['client'] = {
-                    'hl': 'en',
-                    'gl': 'US',
-                }
-                
+                request_body = self.buildInnertubeBody(query=query, client={'hl': 'en', 'gl': 'US'})                
                 url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({'key': searchKey})
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        url,
-                        headers={"User-Agent": userAgent, "Content-Type": "application/json"},
-                        json=request_body,
-                        timeout=self.timeout if self.timeout else 5
-                    )
-                
+                response = await _get_async_client().post(
+                    url,
+                    headers={"User-Agent": userAgent, "Content-Type": "application/json"},
+                    json=request_body,
+                    timeout=self.timeout if self.timeout else 5
+                )                
                 if response.status_code == 200:
                     data = response.json()
                     contents = getValue(data, contentPath)
-                    fallback_contents = getValue(data, fallbackContentPath)
-                    
+                    fallback_contents = getValue(data, fallbackContentPath)                    
                     search_contents = contents if contents else fallback_contents
-                    video_data = self.__findVideoDataInSearchResults(search_contents, video_id)
-                    
+                    video_data = self.__findVideoDataInSearchResults(search_contents, video_id)                    
                     if video_data:
                         result['title'] = getValue(video_data, ['title', 'runs', 0, 'text'])
                         result['publishedTime'] = getValue(video_data, ['publishedTimeText', 'simpleText']) or getValue(video_data, ['publishedTimeText', 'runs', 0, 'text'])
@@ -387,7 +360,6 @@ class VideoCore(RequestCore):
                             'link': 'https://www.youtube.com/channel/' + (getValue(video_data, ['ownerText', 'runs', 0, 'navigationEndpoint', 'browseEndpoint', 'browseId']) or "")
                         }
                         
-                        # Extract hq720 thumbnail
                         if result['thumbnails']:
                             best_thumb = self.__getBestHq720FromThumbnails(result['thumbnails'])
                             if best_thumb:
@@ -396,19 +368,16 @@ class VideoCore(RequestCore):
                         if result['title']:
                             break
             except Exception:
-                continue
-        
+                continue        
         return result
 
 
     def __enhanceThumbnails(self, thumbnails: List[dict], video_id: str, search_api_data: Optional[dict] = None) -> List[dict]:
         if not thumbnails or not video_id:
-            return thumbnails
-        
+            return thumbnails        
         enhanced = list(thumbnails)
         existing_urls = {thumb.get("url", "") for thumb in enhanced if isinstance(thumb, dict)}
-        existing_base_urls = {url.split('?')[0] if '?' in url else url for url in existing_urls}
-        
+        existing_base_urls = {url.split('?')[0] if '?' in url else url for url in existing_urls}        
         standard_thumbnails = [
             {"url": f"https://i.ytimg.com/vi/{video_id}/default.jpg", "width": 120, "height": 90},
             {"url": f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg", "width": 320, "height": 180},
@@ -433,20 +402,17 @@ class VideoCore(RequestCore):
         if optimized_hq720:
             optimized_url = optimized_hq720["url"]
             if optimized_url not in existing_urls and optimized_url.split('?')[0] not in existing_base_urls:
-                enhanced.append(optimized_hq720)
-        
+                enhanced.append(optimized_hq720)       
         return enhanced
-
 
 
     async def __enhanceThumbnailsAsync(self, thumbnails: List[dict], video_id: str, search_api_data: Optional[dict] = None) -> List[dict]:
         if not thumbnails or not video_id:
-            return thumbnails
-        
+            return thumbnails        
         enhanced = list(thumbnails)
         existing_urls = {thumb.get("url", "") for thumb in enhanced if isinstance(thumb, dict)}
         existing_base_urls = {url.split('?')[0] if '?' in url else url for url in existing_urls}
-        
+           
         standard_thumbnails = [
             {"url": f"https://i.ytimg.com/vi/{video_id}/default.jpg", "width": 120, "height": 90},
             {"url": f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg", "width": 320, "height": 180},
@@ -460,9 +426,7 @@ class VideoCore(RequestCore):
             base_url = thumb["url"]
             if base_url not in existing_base_urls:
                 if await self.__checkThumbnailExistsAsync(base_url):
-                    enhanced.append(thumb)
-        
-        # Use search API data if already fetched in same call to avoid multiple reqs , otherwise fetch separately
+                    enhanced.append(thumb)        
         if search_api_data and search_api_data.get('hq720Thumbnail'):
             optimized_hq720 = search_api_data['hq720Thumbnail']
         else:
@@ -487,8 +451,7 @@ class VideoCore(RequestCore):
             publish_date = getValue(
                 responseSource,
                 ["microformat", "playerMicroformatRenderer", "publishDate"],
-            )
-            
+            )            
             component = {
                 "id": getValue(responseSource, ["videoDetails", "videoId"]),
                 "title": getValue(responseSource, ["videoDetails", "title"]),
@@ -615,8 +578,7 @@ class VideoCore(RequestCore):
         if "publishDate" in videoComponent:
             del videoComponent["publishDate"]
         if "uploadDate" in videoComponent:
-            del videoComponent["uploadDate"]
-        
+            del videoComponent["uploadDate"]        
         self.__videoComponent = videoComponent
 
     async def __getVideoComponentAsync(self, mode: str) -> None:
@@ -758,6 +720,5 @@ class VideoCore(RequestCore):
         if "publishDate" in videoComponent:
             del videoComponent["publishDate"]
         if "uploadDate" in videoComponent:
-            del videoComponent["uploadDate"]
-        
-        self.__videoComponent = videoComponent
+            del videoComponent["uploadDate"]        
+        self.__videoComponent = videoComponent        
