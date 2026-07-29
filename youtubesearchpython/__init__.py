@@ -5,13 +5,13 @@ Original project by Hitesh Kumar Saini (alexmercerind).
 """
 
 from youtubesearchpython.search import Search, VideosSearch, ChannelsSearch, PlaylistsSearch, CustomSearch, ChannelSearch
-from youtubesearchpython.extras import Video, Playlist, Suggestions, Hashtag, Comments, Transcript, Channel
+from youtubesearchpython.extras import Video, Playlist, Suggestions, SuggestionsSession, Hashtag, Comments, Transcript, Channel, Recommendations
 from youtubesearchpython.streamurlfetcher import StreamURLFetcher
 from youtubesearchpython.core.constants import *
 from youtubesearchpython.core.utils import *
 
-__title__        = 'youtube-search-python'
-__version__      = '2.0.0'
+__title__        = 'yt-search-python'
+__version__      = '2.1.0'
 __author__       = 'Prakhar'
 __license__      = 'MIT'
 
