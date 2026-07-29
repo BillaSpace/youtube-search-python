@@ -107,18 +107,19 @@ class PlaylistCore(RequestCore):
         except json.JSONDecodeError as e:raise YouTubeParseError(f"Failed to parse JSON response for playlist: {e}")
         except Exception as e:raise YouTubeParseError(f"Failed to parse YouTube playlist response: {e}")
 
+
     def __getComponents(self)->None:
         has_sidebar="sidebar" in self.responseSource
         if has_sidebar:
             sidebar=self.responseSource["sidebar"]["playlistSidebarRenderer"]["items"]
             inforenderer=sidebar[0]["playlistSidebarPrimaryInfoRenderer"]
-            channel_details_available=len(sidebar)!=1
+            channel_details_available=len(sidebar)>1
             channelrenderer=sidebar[1]["playlistSidebarSecondaryInfoRenderer"]["videoOwner"]["videoOwnerRenderer"] if channel_details_available else None
         else:
             inforenderer={}
             channelrenderer=None
             channel_details_available=False
-        videorenderer=None
+        videorenderer=[]
         stack=[self.responseSource]
         while stack:
             current=stack.pop()
@@ -126,33 +127,30 @@ class PlaylistCore(RequestCore):
                 renderer=current.get("playlistVideoListRenderer")
                 if isinstance(renderer,dict):
                     contents=renderer.get("contents")
-                    if isinstance(contents,list):
+                    if isinstance(contents,list) and contents:
                         videorenderer=contents
                         break
                 stack.extend(current.values())
             elif isinstance(current,list):stack.extend(current)
-        if videorenderer is None:videorenderer=[]
-        if not has_sidebar and not videorenderer:
-            if getattr(self,"playlistId","").upper().startswith("RD"):
-                raise YouTubeParseError("Could not parse this playlist: auto-generated Mix/Radio playlists are not supported.")
-            raise YouTubeParseError("Could not parse this playlist: no sidebar and no video list found.")
         videos=[]
+        seen=set()
         for item in videorenderer:
             try:
                 video=item.get("playlistVideoRenderer")
                 if not isinstance(video,dict):continue
                 video_id=self.__getValue(video,["videoId"])
-                if not video_id:continue
+                if not video_id or video_id in seen:continue
+                seen.add(video_id)
                 relative_url=self.__getValue(video,["navigationEndpoint","commandMetadata","webCommandMetadata","url"])
-                channel_path=["shortBylineText","runs",0,"navigationEndpoint","browseEndpoint"]
+                channel_base=["shortBylineText","runs",0,"navigationEndpoint","browseEndpoint"]
                 videos.append({
                     "id":video_id,
                     "thumbnails":self.__getValue(video,["thumbnail","thumbnails"]),
                     "title":self.__getValue(video,["title","runs",0,"text"]),
                     "channel":{
                         "name":self.__getValue(video,["shortBylineText","runs",0,"text"]),
-                        "id":self.__getValue(video,channel_path+["browseId"]),
-                        "link":self.__getValue(video,channel_path+["canonicalBaseUrl"])
+                        "id":self.__getValue(video,channel_base+["browseId"]),
+                        "link":self.__getValue(video,channel_base+["canonicalBaseUrl"])
                     },
                     "duration":self.__getValue(video,["lengthText","simpleText"]),
                     "accessibility":{
@@ -163,9 +161,61 @@ class PlaylistCore(RequestCore):
                     "isPlayable":self.__getValue(video,["isPlayable"])
                 })
             except (KeyError,AttributeError,IndexError,TypeError):continue
+        stack=[self.responseSource]
+        while stack:
+            current=stack.pop()
+            if isinstance(current,dict):
+                lockup=current.get("lockupViewModel")
+                if isinstance(lockup,dict):
+                    video_id=lockup.get("contentId")
+                    if not isinstance(video_id,str) or len(video_id)!=11:
+                        video_id=None
+                        inner=[lockup]
+                        while inner and not video_id:
+                            node=inner.pop()
+                            if isinstance(node,dict):
+                                candidate=node.get("videoId")
+                                if isinstance(candidate,str) and len(candidate)==11:
+                                    video_id=candidate
+                                    break
+                                inner.extend(node.values())
+                            elif isinstance(node,list):inner.extend(node)
+                    if video_id and video_id not in seen:
+                        seen.add(video_id)
+                        metadata=self.__getValue(lockup,["metadata","lockupMetadataViewModel"]) or {}
+                        title=self.__getValue(metadata,["title","content"])
+                        if not title:title=self.__getValue(metadata,["title","runs",0,"text"])
+                        thumbnails=self.__getValue(lockup,["contentImage","thumbnailViewModel","image","sources"])
+                        if not thumbnails:thumbnails=self.__getValue(lockup,["contentImage","thumbnailViewModel","thumbnail","thumbnails"])
+                        duration=None
+                        metadata_rows=self.__getValue(metadata,["metadata","contentMetadataViewModel","metadataRows"]) or []
+                        for row in metadata_rows:
+                            parts=self.__getValue(row,["metadataParts"]) or []
+                            for part in parts:
+                                text=self.__getValue(part,["text","content"])
+                                if isinstance(text,str) and re.fullmatch(r"\d{1,2}:\d{2}(?::\d{2})?",text):
+                                    duration=text
+                                    break
+                            if duration:break
+                        videos.append({
+                            "id":video_id,
+                            "thumbnails":thumbnails,
+                            "title":title,
+                            "channel":{"name":None,"id":None,"link":None},
+                            "duration":duration,
+                            "accessibility":{"title":title,"duration":duration},
+                            "link":"https://www.youtube.com/watch?v="+video_id,
+                            "isPlayable":True
+                        })
+                stack.extend(current.values())
+            elif isinstance(current,list):stack.extend(current)
+        if not has_sidebar and not videos:
+            if getattr(self,"playlistId","").upper().startswith("RD"):
+                raise YouTubeParseError("Could not parse this playlist: auto-generated Mix/Radio playlists are not supported.")
+            raise YouTubeParseError("Could not parse this playlist: no sidebar and no video list found.")
         playlistElement={
             "info":{
-                "id":self.__getValue(inforenderer,["title","runs",0,"navigationEndpoint","watchEndpoint","playlistId"]),
+                "id":self.__getValue(inforenderer,["title","runs",0,"navigationEndpoint","watchEndpoint","playlistId"]) or getattr(self,"playlistId",None),
                 "thumbnails":self.__getValue(inforenderer,["thumbnailRenderer","playlistVideoThumbnailRenderer","thumbnail","thumbnails"]),
                 "title":self.__getValue(inforenderer,["title","runs",0,"text"]),
                 "videoCount":self.__getValue(inforenderer,["stats",0,"runs",0,"text"]),
@@ -175,7 +225,7 @@ class PlaylistCore(RequestCore):
                     "id":self.__getValue(channelrenderer,["title","runs",0,"navigationEndpoint","browseEndpoint","browseId"]) if channel_details_available else None,
                     "name":self.__getValue(channelrenderer,["title","runs",0,"text"]) if channel_details_available else None,
                     "detailsAvailable":channel_details_available,
-                    "link":"https://www.youtube.com"+self.__getValue(channelrenderer,["title","runs",0,"navigationEndpoint","browseEndpoint","canonicalBaseUrl"]) if channel_details_available else None,
+                    "link":"https://www.youtube.com"+self.__getValue(channelrenderer,["title","runs",0,"navigationEndpoint","browseEndpoint","canonicalBaseUrl"]) if channel_details_available and self.__getValue(channelrenderer,["title","runs",0,"navigationEndpoint","browseEndpoint","canonicalBaseUrl"]) else None,
                     "thumbnails":self.__getValue(channelrenderer,["thumbnail","thumbnails"]) if channel_details_available else None
                 }
             },
@@ -184,7 +234,7 @@ class PlaylistCore(RequestCore):
         if self.componentMode=="getInfo":self.playlistComponent=playlistElement["info"]
         elif self.componentMode=="getVideos":self.playlistComponent={"videos":videos}
         else:self.playlistComponent=playlistElement
-        self.continuationKey=self.__getValue(videorenderer,[-1,"continuationItemRenderer","continuationEndpoint","continuationCommand","token"])
+        self.continuationKey=self.__getValue(videorenderer,[-1,"continuationItemRenderer","continuationEndpoint","continuationCommand","token"]) if videorenderer else None
 
     def __getNextComponents(self)->None:
         self.continuationKey=None
