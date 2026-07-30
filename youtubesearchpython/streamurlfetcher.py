@@ -13,7 +13,7 @@ class StreamURLFetcher(StreamURLFetcherCore):
     Avoid instantiating this class more than once (making a global object is recommended).
 
     Raises:
-        Exception: "ERROR: yt-dlp is not installed. To use this functionality of yt-search-python, yt-dlp must be installed on your system."
+        Exception: "ERROR: yt-dlp is not installed. To use this functionality of yt-search-python, yt-dlp  & deno must be installed on your system."
     
     See Also:
         For usage examples, see docs/stream_examples.md
