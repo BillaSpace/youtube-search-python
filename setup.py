@@ -1,15 +1,10 @@
-import setuptools
-
-with open("README.md", "r", encoding="utf-8") as fh:
-    long_description = fh.read()
-
 setuptools.setup(
     name="yt-search-python",
     version="2.1.1",
     author="Prakhar-Shukla",
     license="MIT",
     author_email="srvopus@gmail.com",
-    description="Search YouTube contents without YouTube Data API v3. Professionally maintained fork with modern Sync & Async Python support.",
+    description="Search YouTube contents without YouTube Data v3 API_KEY with modern Sync & Async Python support.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/BillaSpace/yt-search-python",
@@ -19,6 +14,11 @@ setuptools.setup(
     install_requires=[
         "httpx>=0.28.1"
     ],
+    extras_require={
+        "transcript": [
+            'yt-dlp; python_version >= "3.10"'
+        ]
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.7",
