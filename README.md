@@ -9,7 +9,7 @@
 
 **Search and read YouTube data (videos, playlists, channels, comments, transcripts) without the YouTube Data API v3 — no API key, no quota limits.**
 
-[Installation](#installation) • [Quick Start](#quick-start) • [Key Classes](#key-classes) • [Examples](#examples) • [Known Limitations](#known-limitations) • [Testing](#testing)
+[Installation](#installation) • [Quick Start](#quick-start) • [Key Classes](#key-classes) • [Examples](#examples) • [Known Limitations](#known-limitations)
 
 ---
 
