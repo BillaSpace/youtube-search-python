@@ -1,17 +1,17 @@
-## yt-search-python ( youtube-search-python )
+### yt-search-python ( youtube-search-python )
 
 install via 
 ```pip3 install yt-search-python```
 
-- future Async Usage Guide
+## future Async Usage Guide
 
-## For full docs checkout 
+# For full docs checkout 
 [examples](https://github.com/BillaSpace/youtube-search-python/docs/)
 ---
 
 ## 🔍 Async Search Usage
 
-## Search – videos + channels + playlists
+# Search – videos + channels + playlists
 ```python
 from youtubesearchpython.future import Search
 
@@ -69,9 +69,9 @@ print(result)
 
 ---
 
-# 🎬 StreamURLFetcher – Direct YouTube Stream URLs (Experimental)
+## 🎬 StreamURLFetcher – Direct YouTube Stream URLs (Experimental)
 
-## Requirements
+# Requirements
 - Call `await fetcher.getJavaScript()` **once** before any extraction.
 - Works with results from `Video.get()` or `Video.getFormats()`.
 
