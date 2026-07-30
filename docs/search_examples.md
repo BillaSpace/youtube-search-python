@@ -6,7 +6,7 @@
 ```python
 from youtubesearchpython import VideosSearch
 
-search = VideosSearch('Watermelon Sugar', limit=1)
+search = VideosSearch('Watermelon Sugar Video', limit=1)
 print(search.result())
 ```
 
