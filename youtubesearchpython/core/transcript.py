@@ -5,7 +5,7 @@ from pathlib import Path
 from http.cookiejar import MozillaCookieJar
 from urllib.parse import urlparse,parse_qsl,urlencode,urlunparse
 from typing import Dict,List,Optional
-from youtubesearchpython.core.requests import RequestCore,_get_sync_client,_get_async_client
+from youtubesearchpython.core.requests import RequestCore,_get_sync_client
 from youtubesearchpython.core.componenthandler import getVideoId
 
 class TranscriptCore(RequestCore):
@@ -30,9 +30,9 @@ class TranscriptCore(RequestCore):
             if text.startswith("{"):
                 data=response.json()
                 value=data.get("cookies") or data.get("content") or data.get("text") or data.get("data")
-                next_url=data.get("url") or data.get("raw") or data.get("raw_url")
-                if not value and next_url:
-                    response=_get_sync_client().get(next_url,timeout=20,follow_redirects=True)
+                raw=data.get("url") or data.get("raw") or data.get("raw_url")
+                if not value and raw:
+                    response=_get_sync_client().get(raw,timeout=20,follow_redirects=True)
                     response.raise_for_status()
                     value=response.text
                 text=value or ""
@@ -40,7 +40,8 @@ class TranscriptCore(RequestCore):
             if not text.startswith(("# Netscape HTTP Cookie File","# HTTP Cookie File")):
                 text="# Netscape HTTP Cookie File\n"+text
             file=tempfile.NamedTemporaryFile("w",suffix=".txt",encoding="utf-8",delete=False)
-            file.write(text);file.close()
+            file.write(text)
+            file.close()
             return file.name
         except Exception:return None
 
@@ -71,12 +72,14 @@ class TranscriptCore(RequestCore):
         for track in tracks:
             name=track.get("name") or {}
             language=name.get("simpleText") or "".join(x.get("text","") for x in name.get("runs",[])) or track.get("languageCode") or "Unknown"
+            url=track.get("baseUrl") or track.get("url") or ""
+            generated=track.get("kind")=="asr" or "caps=asr" in url
             result.append({
                 "languageCode":track.get("languageCode"),
                 "language":language,
-                "isGenerated":track.get("kind")=="asr",
+                "isGenerated":generated,
                 "isTranslatable":track.get("isTranslatable",False),
-                "baseUrl":track.get("baseUrl") or track.get("url"),
+                "baseUrl":url,
                 "params":track.get("languageCode")
             })
         return result
@@ -87,7 +90,7 @@ class TranscriptCore(RequestCore):
         query["fmt"]="json3"
         return urlunparse(parsed._replace(query=urlencode(query)))
 
-    def _parse_transcript(self,text:str)->List[Dict]:
+    def _parse(self,text:str)->List[Dict]:
         text=text.strip()
         if not text:return []
         segments=[]
@@ -137,7 +140,8 @@ class TranscriptCore(RequestCore):
             "context":{"client":{
                 "clientName":"WEB",
                 "clientVersion":version.group(1) if version else "2.20250730.01.00",
-                "hl":self.key or "en","gl":"US"
+                "hl":self.key or "en",
+                "gl":"US"
             }},
             "videoId":self.video_id,
             "contentCheckOk":True,
@@ -145,8 +149,10 @@ class TranscriptCore(RequestCore):
         }
         response=client.post(
             f"https://www.youtube.com/youtubei/v1/player?key={api.group(1)}",
-            json=body,headers={**headers,"Content-Type":"application/json"},
-            timeout=20,follow_redirects=True
+            json=body,
+            headers={**headers,"Content-Type":"application/json"},
+            timeout=20,
+            follow_redirects=True
         )
         response.raise_for_status()
         tracks=response.json().get("captions",{}).get("playerCaptionsTracklistRenderer",{}).get("captionTracks",[])
@@ -161,7 +167,7 @@ class TranscriptCore(RequestCore):
             return
         caption=client.get(self._caption_url(url),headers=headers,timeout=20,follow_redirects=True)
         caption.raise_for_status()
-        self.result={"segments":self._parse_transcript(caption.text),"languages":languages}
+        self.result={"segments":self._parse(caption.text),"languages":languages}
 
     def _ytdlp(self,cookie_file:Optional[str]):
         try:from yt_dlp import YoutubeDL
@@ -171,6 +177,9 @@ class TranscriptCore(RequestCore):
             "no_warnings":True,
             "skip_download":True,
             "socket_timeout":20,
+            "retries":1,
+            "extractor_retries":1,
+            "fragment_retries":1,
             "extractor_args":{"youtube":{"player_client":["web","android","tv"]}}
         }
         if cookie_file:options["cookiefile"]=cookie_file
@@ -181,14 +190,15 @@ class TranscriptCore(RequestCore):
             for code,formats in source.items():
                 if any(x.get("languageCode")==code for x in tracks):continue
                 selected=next((x for x in formats if x.get("ext")=="json3"),next((x for x in formats if x.get("ext") in ("srv1","srv3","ttml")),None))
-                if selected:
-                    tracks.append({
-                        "languageCode":code,
-                        "name":{"simpleText":selected.get("name") or code},
-                        "kind":"asr" if generated else None,
-                        "isTranslatable":False,
-                        "baseUrl":selected.get("url")
-                    })
+                if not selected:continue
+                url=selected.get("url") or ""
+                tracks.append({
+                    "languageCode":code,
+                    "name":{"simpleText":selected.get("name") or code},
+                    "kind":"asr" if generated or "caps=asr" in url else None,
+                    "isTranslatable":False,
+                    "baseUrl":url
+                })
         languages=self._languages(tracks)
         selected=self._select_track(tracks)
         if not selected:
@@ -198,11 +208,11 @@ class TranscriptCore(RequestCore):
         self._apply_cookies(client,cookie_file)
         response=client.get(self._caption_url(selected["baseUrl"]),timeout=20,follow_redirects=True)
         response.raise_for_status()
-        self.result={"segments":self._parse_transcript(response.text),"languages":languages}
+        self.result={"segments":self._parse(response.text),"languages":languages}
 
     def sync_create(self):
         cookie_file=self._cookie_file()
-        temporary=bool(cookie_file and tempfile.gettempdir() in str(Path(cookie_file).parent))
+        temporary=bool(cookie_file and Path(cookie_file).parent==Path(tempfile.gettempdir()))
         try:
             try:self._native(cookie_file)
             except Exception:self.result={"segments":[],"languages":[]}
