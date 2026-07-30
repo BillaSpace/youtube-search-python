@@ -4,14 +4,12 @@ from youtubesearchpython.handlers.componenthandler import ComponentHandler
 from youtubesearchpython.handlers.requesthandler import RequestHandler
 from youtubesearchpython.core.constants import *
 
-
 def overrides(interface_class):
     def overrider(method):
         assert(method.__name__ in dir(interface_class))
         return method
     return overrider
     
-
 
 class LegacyComponentHandler(RequestHandler, ComponentHandler):
     index = 0
@@ -76,8 +74,6 @@ class LegacyComponentHandler(RequestHandler, ComponentHandler):
         }
 
     def __getValue(self, component: Union[dict, list, None], path: List[Union[str, int]]) -> Union[str, int, dict, list, None]:
-        # Preserve original behavior of returning 'LIVE' for missing values,
-        # but guard against None and wrong types so it won't raise.
         value = component
         for key in path:
             if value is None:
