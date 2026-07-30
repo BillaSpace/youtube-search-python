@@ -12,7 +12,6 @@ class Search(SearchCore):
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         timeout (int, optional): Timeout for the request in seconds.
-    
     See Also:
         For usage examples and output structure, see docs/search_examples.md
     '''
@@ -27,14 +26,12 @@ class Search(SearchCore):
 
 class VideosSearch(SearchCore):
     '''Searches for videos in YouTube.
-
     Args:
         query (str): Sets the search query.
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         timeout (int, optional): Timeout for the request in seconds.
-    
     See Also:
         For usage examples and output structure, see docs/search_examples.md
     '''
@@ -50,14 +47,12 @@ class VideosSearch(SearchCore):
 
 class ChannelsSearch(SearchCore):
     '''Searches for channels in YouTube.
-
     Args:
         query (str): Sets the search query.
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
-        timeout (int, optional): Timeout for the request in seconds.
-    
+        timeout (int, optional): Timeout for the request in seconds. 
     See Also:
         For usage examples and output structure, see docs/search_examples.md
     '''
@@ -73,14 +68,12 @@ class ChannelsSearch(SearchCore):
 
 class PlaylistsSearch(SearchCore):
     '''Searches for playlists in YouTube.
-
     Args:
         query (str): Sets the search query.
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         timeout (int, optional): Timeout for the request in seconds.
-    
     See Also:
         For usage examples and output structure, see docs/search_examples.md
     '''
@@ -96,7 +89,6 @@ class PlaylistsSearch(SearchCore):
 
 class ChannelSearch(ChannelSearchCore):
     '''Searches for videos in specific channel in YouTube.
-
     Args:
         query (str): Sets the search query.
         browseId (str): Channel ID to search within.
@@ -104,7 +96,6 @@ class ChannelSearch(ChannelSearchCore):
         region (str, optional): Sets the result region. Defaults to 'US'.
         searchPreferences (str, optional): Custom search preferences parameter.
         timeout (int, optional): Timeout for the request in seconds.
-    
     See Also:
         For usage examples and output structure, see docs/search_examples.md
     '''
@@ -119,8 +110,7 @@ class ChannelSearch(ChannelSearchCore):
 
 class CustomSearch(SearchCore):
     '''Performs custom search in YouTube with search filters or sorting orders. 
-    
-    Predefined filters and sorting orders:
+       Predefined filters and sorting orders:
         - SearchMode.videos, SearchMode.channels, SearchMode.playlists
         - VideoUploadDateFilter.lastHour, .today, .thisWeek, .thisMonth, .thisYear
         - VideoDurationFilter.short, .long
@@ -129,7 +119,6 @@ class CustomSearch(SearchCore):
     The value of `sp` parameter in the YouTube search query can be used as a search filter.
     Example: `EgQIBRAB` from https://www.youtube.com/results?search_query=NoCopyrightSounds&sp=EgQIBRAB 
     can be passed as `searchPreferences` to get videos uploaded this year.
-
     Args:
         query (str): Sets the search query.
         searchPreferences (str): Sets the `sp` query parameter in the YouTube search request.
@@ -137,7 +126,6 @@ class CustomSearch(SearchCore):
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         timeout (int, optional): Timeout for the request in seconds.
-    
     See Also:
         For usage examples and available filters, see docs/search_examples.md
     '''
