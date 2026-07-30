@@ -9,7 +9,7 @@ setuptools.setup(
     author="Prakhar-Shukla",
     license="MIT",
     author_email="srvopus@gmail.com",
-    description="Search YouTube contents without YouTube Data v3 API_KEY with modern Sync & Async Python support.",
+    description="Search YouTube contents without YouTube Data v3 API_KEY with Modern Sync & Async Python support.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/BillaSpace/yt-search-python",
