@@ -14,7 +14,6 @@ class Search(SearchCore):
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         timeout (int, optional): Sets the request timeout in seconds.
-    
     See Also:
         For usage examples, see docs/earch_examples.md (use await with async methods)
     '''
@@ -28,14 +27,12 @@ class Search(SearchCore):
 
 class VideosSearch(SearchCore):
     '''Searches for videos in YouTube (async version).
-
     Args:
         query (str): Sets the search query.
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
-        timeout (int, optional): Sets the request timeout in seconds.
-    
+        timeout (int, optional): Sets the request timeout in seconds.  
     See Also:
         For usage examples, see docs/search_examples.md (use await with async methods)
     '''
@@ -49,14 +46,12 @@ class VideosSearch(SearchCore):
 
 class ChannelsSearch(SearchCore):
     '''Searches for channels in YouTube (async version).
-
     Args:
         query (str): Sets the search query.
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         timeout (int, optional): Sets the request timeout in seconds.
-    
     See Also:
         For usage examples, see docs/search_examples.md (use await with async methods)
     '''
@@ -70,14 +65,12 @@ class ChannelsSearch(SearchCore):
 
 class PlaylistsSearch(SearchCore):
     '''Searches for playlists in YouTube (async version).
-
     Args:
         query (str): Sets the search query.
         limit (int, optional): Sets limit to the number of results. Defaults to 20.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         timeout (int, optional): Sets the request timeout in seconds.
-    
     See Also:
         For usage examples, see docs/search_examples.md (use await with async methods)
     '''
@@ -91,15 +84,13 @@ class PlaylistsSearch(SearchCore):
 
 class ChannelSearch(ChannelSearchCore):
     '''Searches for videos in specific channel in YouTube (async version).
-
     Args:
         query (str): Sets the search query.
         browseId (str): Channel ID to search within.
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         searchPreferences (str, optional): Custom search preferences parameter.
-        timeout (int, optional): Sets the request timeout in seconds.
-    
+        timeout (int, optional): Sets the request timeout in seconds. 
     See Also:
         For usage examples, see docs/search_examples.md (use await with async methods)
     '''
@@ -112,7 +103,6 @@ class ChannelSearch(ChannelSearchCore):
 
 class CustomSearch(SearchCore):
     '''Performs custom search in YouTube with search filters or sorting orders (async version).
-
     Args:
         query (str): Sets the search query.
         searchPreferences (str): Sets the `sp` query parameter in the YouTube search request.
@@ -120,7 +110,6 @@ class CustomSearch(SearchCore):
         language (str, optional): Sets the result language. Defaults to 'en'.
         region (str, optional): Sets the result region. Defaults to 'US'.
         timeout (int, optional): Sets the request timeout in seconds.
-    
     See Also:
         For usage examples and available filters, see docs/search_examples.md (use await with async methods)
     '''
