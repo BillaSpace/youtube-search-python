@@ -66,3 +66,7 @@ print(allUrls)
 - **Video Only**: 134 (360p), 135 (480p), 136 (720p), 137 (1080p)
 - **Audio Only**: 249 (opus 50kbps), 250 (opus 70kbps), 251 (opus
 -  160kbps)
+
+### Optional Cookies Support
+Picks netscape format cookies.txt file directly from your project root
+or directly pass COOKIE_URL via your env ( supports pastebin / batbin or raw netscape urls)
