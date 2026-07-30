@@ -1,7 +1,6 @@
 # Video, Playlist, and Other Extras Examples
 
 ## Video.get()
-
 ### Basic Usage
 ```python
 from youtubesearchpython import Video, ResultMode
