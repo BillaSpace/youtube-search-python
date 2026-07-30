@@ -10,10 +10,8 @@ class StreamURLFetcher(StreamURLFetcherCore):
     
     Call `self.getJavaScript` method before any other method from this class.
     Do not call this method more than once & avoid reinstanciating the class.
-
     Raises:
-        Exception: "ERROR: if yt-dlp is not installed. To use this functionality of yt-search-python, yt-dlp should be must installed."
-    
+        Exception: "ERROR: if yt-dlp is not installed. To use this functionality of yt-search-python, yt-dlp & deno  must installed in your system."
     See Also:
         For usage examples, see docs/stream_examples.md (use await with async methods)
     '''
