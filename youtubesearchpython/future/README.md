@@ -1,6 +1,7 @@
-## youtube-search-python 
-- now as :
-`yt-search-python`  
+## yt-search-python ( youtube-search-python )
+
+install via 
+```pip3 install yt-search-python```
 
 - future Async Usage Guide
 
@@ -119,24 +120,12 @@ print(all_streams)
   ]
 }
 ```
-
----
-
-## what's new  v2.0.0 ?
-- Now ✳️ Recommendations Suggestions, Comments Are Asynced too
-- Added ✳️ asynced Playlist & Channel Search method classes 
-- Fixed Youtube Video Transcripts will need proxy or cookies in netscape format
-- Reuse a single `StreamURLFetcher()` instance for multiple URLs.
-- Avoid calling `getJavaScript()` more than once & use cookies refer to docs.
-- Extraction speed is fast because **no extra network calls** are made when deciphering.
-
 ---
 **⚠️ Experimental:**  
 This library extracts YouTube data **without YouTube Data API v3**.  
 It depends on public YouTube endpoints and may break anytime due to internal changes.  
 
 
-
-## 👤 Dev
+### Maintainer
 **Prakhar Shukla**  
 [GitHub:](https://github.com/BillaSpace)
