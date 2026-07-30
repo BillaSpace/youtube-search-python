@@ -1,5 +1,12 @@
 # yt-search-python v2.1.1
 
+
+
+[![GitHub Stars](https://img.shields.io/github/stars/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/network)
+[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/github/license/BillaSpace/youtube-search-python?style=for-the-badge)](https://github.com/BillaSpace/youtube-search-python/blob/main/LICENSE)
+
 **Search and read YouTube data (videos, playlists, channels, comments, transcripts) without the YouTube Data API v3 — no API key, no quota limits.**
 
 [Installation](#installation) • [Quick Start](#quick-start) • [Key Classes](#key-classes) • [Examples](#examples) • [Known Limitations](#known-limitations) • [Testing](#testing)
