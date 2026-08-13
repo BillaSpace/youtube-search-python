@@ -5,7 +5,7 @@ from typing import Optional
 import httpx
 from youtubesearchpython.core.constants import userAgent, requestPayload
 
-_LIMITS = httpx.Limits(max_connections=200, max_keepalive_connections=20, keepalive_expiry=30.0)
+_LIMITS = httpx.Limits(max_connections=200, max_keepalive_connections=0)
 _sync_client: Optional[httpx.Client] = None
 _async_client: Optional[httpx.AsyncClient] = None
 
@@ -22,22 +22,19 @@ def _get_async_client() -> httpx.AsyncClient:
     return _async_client
 
 def close_clients() -> None:
-    global _sync_client, _async_client
+    global _sync_client
     if _sync_client is not None and not _sync_client.is_closed:
         _sync_client.close()
     _sync_client = None
-    if _async_client is not None and not _async_client.is_closed:
-        try:
-            _async_client.close()
-        except Exception:
-            pass
-    _async_client = None
 
 async def aclose_clients() -> None:
-    global _async_client
+    global _sync_client, _async_client
     if _async_client is not None and not _async_client.is_closed:
         await _async_client.aclose()
     _async_client = None
+    if _sync_client is not None and not _sync_client.is_closed:
+        _sync_client.close()
+    _sync_client = None
 
 atexit.register(close_clients)
 
@@ -76,7 +73,6 @@ class RequestCore:
             json=self.data,
             timeout=timeout,
         )
-
 
     def syncGetRequest(self) -> httpx.Response:
         timeout = self.timeout if self.timeout is not None else 10
