@@ -88,7 +88,7 @@ formats = Video.getFormats(
 
 ## StreamURLFetcher
 
-`StreamURLFetcher` no longer uses yt-dlp. It can process a `Video.getFormats()` result or fetch the format data from a video ID/link itself.
+`StreamURLFetcher` no longer uses yt-dlp. It can process a `Video.getFormats()` result or fetch the format data from a video ID/link itself. PO-token generation and session-aware token caching can be handled separately through the [`ytsp-po-token-provider`](https://github.com/BillaSpace/ytsp-po-token-provider).
 
 ```python
 from youtubesearchpython import StreamURLFetcher
@@ -249,3 +249,7 @@ Aliases `YOUTUBE_PO_TOKEN` and `YOUTUBE_VISITOR_DATA` are also supported. Explic
 - HTTP transport uses the tested `httpx>=0.28.1,<1.0` range.
 
 HTTP clients are managed internally. Normal sync applications require no explicit shutdown call, and async clients are closed automatically when their owning event loop shuts down gracefully (including `asyncio.run()`). `close_clients()` and `aclose_clients()` remain available only for optional forced teardown, tests, or unusual lifecycle control.
+
+## Related project
+
+For PO-token generation, refresh, session-aware caching, and external provider integration, see [`BillaSpace/ytsp-po-token-provider`](https://github.com/BillaSpace/ytsp-po-token-provider).
