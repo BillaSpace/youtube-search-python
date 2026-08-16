@@ -1,131 +1,37 @@
-### yt-search-python ( youtube-search-python )
+# Async API
 
-install via 
-```pip3 install yt-search-python```
-
-## future Async Usage Guide
-
-# For full docs checkout 
-[examples](https://github.com/BillaSpace/youtube-search-python/docs/)
----
-
-## 🔍 Async Search Usage
-
-# Search – videos + channels + playlists
-```python
-from youtubesearchpython.future import Search
-
-search = Search("lofi music", limit=5)
-result = await search.next()
-print(result)
-```
-
-## VideosSearch – only videos
 ```python
 from youtubesearchpython.future import VideosSearch
 
-search = VideosSearch("anime edits", limit=10)
-result = await search.next()
-print(result)
+search = VideosSearch("lofi music", limit=5)
+first = await search.next()
+second = await search.next()
 ```
 
-## ChannelsSearch – only channels
+Available async APIs include `Search`, `VideosSearch`, `ChannelsSearch`, `PlaylistsSearch`, `CustomSearch`, `ChannelSearch`, `Video`, `Playlist`, `Channel`, `Comments`, `Transcript`, `Hashtag`, `Suggestions`, `Recommendations`, and `StreamURLFetcher`.
+
+Live-only video search:
+
 ```python
-from youtubesearchpython.uture import ChannelsSearch
-
-search = ChannelsSearch("MrBeast", limit=3)
-result = await search.next()
-print(result)
+search = VideosSearch("news", is_live=True)
+print(await search.next())
 ```
 
-## PlaylistsSearch – only playlists
+Stream URLs without yt-dlp:
+
 ```python
-from youtubesearchpython.future import PlaylistsSearch
+from youtubesearchpython.future import StreamURLFetcher
 
-search = PlaylistsSearch("best english songs", limit=3)
-result = await search.next()
-print(result)
+fetcher = StreamURLFetcher(po_token="TOKEN", visitor_data="VISITOR_DATA")
+result = await fetcher.getAll("pnxL4OOzPEc")
+print(result["streams"])
+print(result["unresolved"])
 ```
 
-## CustomSearch – filtered search via `searchPreferences`
+For deterministic shutdown of the shared async HTTP transport:
+
 ```python
-from youtubesearchpython.future import CustomSearch
-
-sp = "EgQQARgB"  # example filter: uploaded last hour
-search = CustomSearch("gaming", searchPreferences=sp, limit=5)
-result = await search.next()
-print(result)
+# Optional forced teardown only
+from youtubesearchpython.future import aclose_clients
+await aclose_clients()
 ```
-
-## ChannelSearch – search inside a channel
-```python
-from youtubesearchpython.future import ChannelSearch
-
-channel_id = "UCZFWPqqPkFlNwIxcpsLOwew"
-search = ChannelSearch("watermelon", browseId=channel_id)
-result = await search.next()
-print(result)
-```
-
----
-
-## 🎬 StreamURLFetcher – Direct YouTube Stream URLs (Experimental)
-
-# Requirements
-- Call `await fetcher.getJavaScript()` **once** before any extraction.
-- Works with results from `Video.get()` or `Video.getFormats()`.
-
-## Example: Get stream URLs
-```python
-from youtubesearchpython.future import StreamURLFetcher, Video
-
-# 1. Create fetcher
-fetcher = StreamURLFetcher()
-
-# 2. Load player JavaScript only once
-await fetcher.getJavaScript()
-
-# 3. Get video formats
-video = await Video.get("https://www.youtube.com/watch?v=aqz-KE-bpKQ")
-
-# 4. Get a direct URL using itag
-url_251 = await fetcher.get(video, 251)
-print(url_251)
-
-# 5. Get all available direct URLs
-all_streams = await fetcher.getAll(video)
-print(all_streams)
-```
-
-## Example output structure (`getAll`)
-```json
-{
-  "streams": [
-    {
-      "url": "...",
-      "itag": 251,
-      "type": "audio/webm; codecs=\"opus\"",
-      "quality": "tiny",
-      "bitrate": 57976,
-      "is_otf": false
-    },
-    {
-      "url": "...",
-      "itag": 22,
-      "type": "video/mp4; codecs=\"avc1.64001F, mp4a.40.2\"",
-      "quality": "hd720",
-      "bitrate": 1340380,
-      "is_otf": false
-    }
-  ]
-}
-```
----
-**⚠️ Experimental:**  
-This library extracts YouTube data **without YouTube Data API v3**.  
-It depends on public YouTube endpoints and may break anytime due to internal changes.  
-
-
-### Maintainer
-**Prakhar Shukla**  
-[GitHub:](https://github.com/BillaSpace)

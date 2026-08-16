@@ -1,7 +1,6 @@
-import re
 from typing import Union, List
 from youtubesearchpython.core.constants import *
-from urllib.parse import urlparse, parse_qs
+from youtubesearchpython.core.utils import get_video_id, normalize_thumbnails
 
 
 def getValue(source: dict, path: List[Union[str, int]]) -> Union[str, int, dict, None]:
@@ -19,9 +18,7 @@ def getValue(source: dict, path: List[Union[str, int]]) -> Union[str, int, dict,
                 return None
 
         elif isinstance(key, int):
-            if not isinstance(value, (list, tuple)):
-                return None
-            if key < 0 or key >= len(value):
+            if not isinstance(value, (list, tuple)) or not (-len(value) <= key < len(value)):
                 return None
             value = value[key]
 
@@ -32,33 +29,21 @@ def getValue(source: dict, path: List[Union[str, int]]) -> Union[str, int, dict,
 
 
 def getVideoId(videoLink: str) -> str:
-    try:
-        parsed = urlparse(videoLink)
-        host = (parsed.netloc or "").lower()
-        if "youtu.be" in host:
-            path = parsed.path.rstrip("/")
-            if path:
-                return path.split("/")[-1]
-
-        if "youtube" in host or "youtube-nocookie" in host:
-            qs = parse_qs(parsed.query)
-            if "v" in qs and qs["v"]:
-                return qs["v"][0]
-            parts = [p for p in parsed.path.split("/") if p]
-            for i, p in enumerate(parts):
-                if p in ("embed", "v", "live") and i + 1 < len(parts):
-                    return parts[i + 1]
-            if parts:
-                return parts[-1]
-        core = videoLink.split("?")[0].split("#")[0].rstrip("/")
-        if "/" in core:
-            return core.split("/")[-1]
-        return core
-
-    except Exception:
-        return videoLink
+    return get_video_id(videoLink)
 
 class ComponentHandler:
+    _getValue = staticmethod(getValue)
+
+    def _isLiveVideo(self, video: dict) -> bool:
+        for badge in self._getValue(video, ["badges"]) or []:
+            style = self._getValue(badge, ["metadataBadgeRenderer", "style"])
+            if style == "BADGE_STYLE_TYPE_LIVE_NOW":
+                return True
+        for overlay in self._getValue(video, ["thumbnailOverlays"]) or []:
+            if self._getValue(overlay, ["thumbnailOverlayTimeStatusRenderer", "style"]) == "LIVE":
+                return True
+        return False
+
     def _getVideoComponent(self, element: dict, shelfTitle: str = None) -> dict:
         video = element[videoElementKey]
         component = {
@@ -71,7 +56,7 @@ class ComponentHandler:
                 'text':                        self._getValue(video, ['viewCountText', 'simpleText']),
                 'short':                       self._getValue(video, ['shortViewCountText', 'simpleText']),
             },
-            'thumbnails':                      self._getValue(video, ['thumbnail', 'thumbnails']),
+            'thumbnails':                      normalize_thumbnails(self._getValue(video, ['thumbnail', 'thumbnails']), self._getValue(video, ['videoId'])),
             'richThumbnail':                   self._getValue(video, ['richThumbnail', 'movingThumbnailRenderer', 'movingThumbnailDetails', 'thumbnails', 0]),
             'descriptionSnippet':              self._getValue(video, ['detailedMetadataSnippets', 0, 'snippetText', 'runs']),
             'channel': {
@@ -83,8 +68,9 @@ class ComponentHandler:
                 'title':                       self._getValue(video, ['title', 'accessibility', 'accessibilityData', 'label']),
                 'duration':                    self._getValue(video, ['lengthText', 'accessibility', 'accessibilityData', 'label']),
             },
+            'isLive':                          self._isLiveVideo(video),
         }
-        component['link'] = 'https://www.youtube.com/watch?v=' + component['id']
+        component['link'] = 'https://www.youtube.com/watch?v=' + component['id'] if component['id'] else None
         if component['channel']['id']:
             component['channel']['link'] = 'https://www.youtube.com/channel/' + component['channel']['id']
         component['shelfTitle'] = shelfTitle
@@ -101,7 +87,7 @@ class ComponentHandler:
             'descriptionSnippet':              self._getValue(channel, ['descriptionSnippet', 'runs']),
             'subscribers':                     self._getValue(channel, ['subscriberCountText', 'simpleText']),
         }
-        component['link'] = 'https://www.youtube.com/channel/' + component['id']
+        component['link'] = 'https://www.youtube.com/channel/' + component['id'] if component['id'] else None
         return component
 
     def _getPlaylistComponent(self, element: dict) -> dict:
@@ -115,9 +101,9 @@ class ComponentHandler:
                 'name':                       self._getValue(playlist, ['shortBylineText', 'runs', 0, 'text']),
                 'id':                         self._getValue(playlist, ['shortBylineText', 'runs', 0, 'navigationEndpoint', 'browseEndpoint', 'browseId']),
             },
-            'thumbnails':                     self._getValue(playlist, ['thumbnailRenderer', 'playlistVideoThumbnailRenderer', 'thumbnail', 'thumbnails']),
+            'thumbnails':                     normalize_thumbnails(self._getValue(playlist, ['thumbnailRenderer', 'playlistVideoThumbnailRenderer', 'thumbnail', 'thumbnails'])),
         }
-        component['link'] = 'https://www.youtube.com/playlist?list=' + component['id']
+        component['link'] = 'https://www.youtube.com/playlist?list=' + component['id'] if component['id'] else None
 
         if component['channel']['id']:
             component['channel']['link'] = 'https://www.youtube.com/channel/' + component['channel']['id']
@@ -136,9 +122,9 @@ class ComponentHandler:
                 'type':                           'video',
                 'id':                              contentId,
                 'title':                           self._getValue(lockup, ['metadata', 'lockupMetadataViewModel', 'title', 'content']),
-                'thumbnails':                      self._getValue(lockup, ['contentImage', 'thumbnailViewModel', 'image', 'sources']),
+                'thumbnails':                      normalize_thumbnails(self._getValue(lockup, ['contentImage', 'thumbnailViewModel', 'image', 'sources']), contentId),
             }
-            component['link'] = 'https://www.youtube.com/watch?v=' + contentId
+            component['link'] = 'https://www.youtube.com/watch?v=' + contentId if contentId else None
             return component
             
         if contentType == "LOCKUP_CONTENT_TYPE_PLAYLIST" and findPlaylists:
@@ -148,7 +134,7 @@ class ComponentHandler:
                 'title':                          self._getValue(lockup, ['metadata', 'lockupMetadataViewModel', 'title', 'content']),
                 'thumbnails':                     self._getValue(lockup, ['contentImage', 'collectionThumbnailViewModel', 'primaryThumbnail', 'thumbnailViewModel', 'image', 'sources']),
             }
-            component['link'] = 'https://www.youtube.com/playlist?list=' + contentId
+            component['link'] = 'https://www.youtube.com/playlist?list=' + contentId if contentId else None
             return component
             
         if contentType == "LOCKUP_CONTENT_TYPE_CHANNEL" and findChannels:
@@ -158,7 +144,7 @@ class ComponentHandler:
                 'title':                          self._getValue(lockup, ['metadata', 'lockupMetadataViewModel', 'title', 'content']),
                 'thumbnails':                     self._getValue(lockup, ['contentImage', 'thumbnailViewModel', 'image', 'sources']),
             }
-            component['link'] = 'https://www.youtube.com/channel/' + contentId
+            component['link'] = 'https://www.youtube.com/channel/' + contentId if contentId else None
             return component
             
         return None
@@ -181,77 +167,74 @@ class ComponentHandler:
     
     def _getChannelSearchComponent(self, elements: list) -> list:
         channelsearch = []
-        for element in elements:
-            responsetype = None
-            if 'gridPlaylistRenderer' in element:
-                element = element['gridPlaylistRenderer']
-                responsetype = 'gridplaylist'
-            elif 'itemSectionRenderer' in element:
-                first_content = element["itemSectionRenderer"]["contents"][0]
-                if 'videoRenderer' in first_content:
-                    element = first_content['videoRenderer']
-                    responsetype = "video"
-                elif 'playlistRenderer' in first_content:
-                    element = first_content["playlistRenderer"]
-                    responsetype = "playlist"
-                else:
-                    raise ValueError(f'Unexpected first_content {first_content}')
-            elif 'continuationItemRenderer' in element:
+        pending = list(elements or [])
+        index = 0
+        while index < len(pending):
+            element = pending[index]
+            index += 1
+            if not isinstance(element, dict):
                 continue
-            else:
-                raise ValueError(f'Unexpected element {element}')
-            
-            if responsetype == "video":
-                json = {
-                    "id":                                    self._getValue(element, ["videoId"]),
+            if "itemSectionRenderer" in element:
+                contents = self._getValue(element, ["itemSectionRenderer", "contents"]) or []
+                pending[index:index] = contents
+                continue
+            if "continuationItemRenderer" in element:
+                continue
+            if "lockupViewModel" in element:
+                component = self._getLockupComponent(element, True, False, True)
+                if component:
+                    channelsearch.append(component)
+                continue
+            if "videoRenderer" in element:
+                video = element["videoRenderer"]
+                video_id = self._getValue(video, ["videoId"])
+                channelsearch.append({
+                    "id": video_id,
                     "thumbnails": {
-                        "normal":                            self._getValue(element, ["thumbnail", "thumbnails"]),
-                        "rich":                              self._getValue(element, ["richThumbnail", "movingThumbnailRenderer", "movingThumbnailDetails", "thumbnails"])
+                        "normal": normalize_thumbnails(self._getValue(video, ["thumbnail", "thumbnails"]), video_id),
+                        "rich": self._getValue(video, ["richThumbnail", "movingThumbnailRenderer", "movingThumbnailDetails", "thumbnails"]),
                     },
-                    "title":                                 self._getValue(element, ["title", "runs", 0, "text"]),
-                    "descriptionSnippet":                    self._getValue(element, ["descriptionSnippet", "runs", 0, "text"]),
-                    "uri":                                   self._getValue(element, ["navigationEndpoint", "commandMetadata", "webCommandMetadata", "url"]),
+                    "title": self._getValue(video, ["title", "runs", 0, "text"]),
+                    "descriptionSnippet": self._getValue(video, ["descriptionSnippet", "runs", 0, "text"]),
+                    "uri": self._getValue(video, ["navigationEndpoint", "commandMetadata", "webCommandMetadata", "url"]),
                     "views": {
-                        "precise":                           self._getValue(element, ["viewCountText", "simpleText"]),
-                        "simple":                            self._getValue(element, ["shortViewCountText", "simpleText"]),
-                        "approximate":                       self._getValue(element, ["shortViewCountText", "accessibility", "accessibilityData", "label"])
+                        "precise": self._getValue(video, ["viewCountText", "simpleText"]),
+                        "simple": self._getValue(video, ["shortViewCountText", "simpleText"]),
+                        "approximate": self._getValue(video, ["shortViewCountText", "accessibility", "accessibilityData", "label"]),
                     },
                     "duration": {
-                        "simpleText":                        self._getValue(element, ["lengthText", "simpleText"]),
-                        "text":                              self._getValue(element, ["lengthText", "accessibility", "accessibilityData", "label"])
+                        "simpleText": self._getValue(video, ["lengthText", "simpleText"]),
+                        "text": self._getValue(video, ["lengthText", "accessibility", "accessibilityData", "label"]),
                     },
-                    "published":                             self._getValue(element, ["publishedTimeText", "simpleText"]),
+                    "published": self._getValue(video, ["publishedTimeText", "simpleText"]),
                     "channel": {
-                        "name":                              self._getValue(element, ["ownerText", "runs", 0, "text"]),
-                        "thumbnails":                        self._getValue(element, ["channelThumbnailSupportedRenderers", "channelThumbnailWithLinkRenderer", "thumbnail", "thumbnails"])
+                        "name": self._getValue(video, ["ownerText", "runs", 0, "text"]),
+                        "thumbnails": self._getValue(video, ["channelThumbnailSupportedRenderers", "channelThumbnailWithLinkRenderer", "thumbnail", "thumbnails"]),
                     },
-                    "type":                                  responsetype
-                }
-            elif responsetype == 'playlist':
-                json = {
-                    "id":                                    self._getValue(element, ["playlistId"]),
-                    "videos":                                self._getVideoFromChannelSearch(self._getValue(element, ["videos"])),
-                    "thumbnails": {
-                        "normal":                            self._getValue(element, ["thumbnails"]),
-                    },
-                    "title":                                 self._getValue(element, ["title", "simpleText"]),
-                    "uri":                                   self._getValue(element, ["navigationEndpoint", "commandMetadata", "webCommandMetadata", "url"]),
-                    "channel": {
-                        "name":                              self._getValue(element, ["longBylineText", "runs", 0, "text"]),
-                    },
-                    "type":                                  responsetype
-                }
-            else:
-                json = {
-                    "id":                                    self._getValue(element, ["playlistId"]),
-                    "thumbnails": {
-                        "normal":                            self._getValue(element, ["thumbnail", "thumbnails", 0]),
-                    },
-                    "title":                                 self._getValue(element, ["title", "runs", 0, "text"]),
-                    "uri":                                   self._getValue(element, ["navigationEndpoint", "commandMetadata", "webCommandMetadata", "url"]),
-                    "type":                                  'playlist'
-                }
-            channelsearch.append(json)
+                    "type": "video",
+                })
+                continue
+            if "playlistRenderer" in element:
+                playlist = element["playlistRenderer"]
+                channelsearch.append({
+                    "id": self._getValue(playlist, ["playlistId"]),
+                    "videos": self._getVideoFromChannelSearch(self._getValue(playlist, ["videos"]) or []),
+                    "thumbnails": {"normal": self._getValue(playlist, ["thumbnails"])},
+                    "title": self._getValue(playlist, ["title", "simpleText"]) or self._getValue(playlist, ["title", "runs", 0, "text"]),
+                    "uri": self._getValue(playlist, ["navigationEndpoint", "commandMetadata", "webCommandMetadata", "url"]),
+                    "channel": {"name": self._getValue(playlist, ["longBylineText", "runs", 0, "text"])},
+                    "type": "playlist",
+                })
+                continue
+            if "gridPlaylistRenderer" in element:
+                playlist = element["gridPlaylistRenderer"]
+                channelsearch.append({
+                    "id": self._getValue(playlist, ["playlistId"]),
+                    "thumbnails": {"normal": self._getValue(playlist, ["thumbnail", "thumbnails", 0])},
+                    "title": self._getValue(playlist, ["title", "runs", 0, "text"]),
+                    "uri": self._getValue(playlist, ["navigationEndpoint", "commandMetadata", "webCommandMetadata", "url"]),
+                    "type": "playlist",
+                })
         return channelsearch
 
     def _getShelfComponent(self, element: dict) -> dict:
@@ -267,22 +250,3 @@ class ComponentHandler:
             'elements':                        elements or [],
         }
 
-    def _getValue(self, source: dict, path: List[str]) -> Union[str, int, dict, None]:
-        value = source
-        if value is None:
-            return None
-        for key in path:
-            if type(key) is str:
-                if isinstance(value, dict) and key in value.keys():
-                    value = value[key]
-                else:
-                    value = None
-                    break
-            elif type(key) is int:
-                if isinstance(value, (list, tuple)) and len(value) > key:
-                    value = value[key]
-                else:
-                    value = None
-                    break
-        return value
-        

@@ -1,97 +1,70 @@
-# Changelogs
+# Changelog
 
-All notable changes to this project will be documented in this file.
+## [2.2.1] - 2026-08-14
 
-## [2.0.0] - 2026-01-18
+### HTTP and resource lifecycle
+- Fixed async client shutdown to use `AsyncClient.aclose()`.
+- Removed the invalid async `.close()` cleanup path.
+- Centralized sync/async request transport and request-body construction.
+- Bounded keep-alive reuse to 8 idle connections with a 5-second expiry to balance connection reuse with FD/`CLOSE_WAIT` safety.
+- HTTP client lifecycle is now internally managed: sync pools close at process exit and async pools close with their owning event loops. `close_clients()` / `aclose_clients()` remain optional forced-teardown APIs.
+- Made proxy clients request-scoped and deterministically closed.
+- Restored bounded default request timeouts when callers pass `None`.
+- Forwarded per-request custom headers through the canonical transport.
+- Isolated transcript cookie state from the shared HTTP clients.
+- Made temporary downloaded-cookie ownership/cleanup deterministic.
 
-### 🎉 Major Refactoring Release
+### Search and pagination
+- Added optional `VideosSearch(..., is_live=True)` support in sync and async APIs.
+- Added live badge detection to video search results.
+- Fixed stale search continuation state that could repeat the final page.
+- Fixed malformed `richItemRenderer` entries from crashing a search page.
+- Fixed `ChannelSearch.next()` to use continuation tokens instead of repeating the first request.
+- Fixed hashtag continuation exhaustion so the last page is not fetched repeatedly.
+- Fixed comments continuation exhaustion and instance-state isolation.
 
-### Added
-- ✨ **`future` module** - Clear naming for async operations
-- 🧪 **Comprehensive testing** - Tested with Indian & Myanmar songs
-- 📚 **Professional README** - Complete rewrite with extensive examples
-- 📝 **CHANGELOG** - Version tracking
-- 🌍 **Regional examples** - Indian and Myanmar content examples
--  Channel , Playlist , Comments , Recommendations , Suggestions 
+### Playlists
+- Added native Innertube support for YouTube Mix/Radio `RD...` playlists through `/next`.
+- Parse direct `playlistPanelVideoRenderer` entries even when `playlistPanelRenderer` is absent.
+- Preserve exact YouTube response order with stable first-occurrence duplicate removal.
+- Prevent comment/engagement continuation tokens in Mix responses from being followed as playlist pages.
+- Retained regular playlist browse/continuation support with stable duplicate removal.
 
-### Changed
-- 📦 **Module structure**: async operations now in `youtubesearchpython.future`
-- 📈 **Version**: 1.6.6+master → 2.0.0
+### Video, thumbnails and recommendations
+- Fixed `Video` JSON result mode returning a dict through a dead result path.
+- Added `po_token` and `visitor_data` support to sync/async video player requests.
+- Prefer player responses containing direct stream URLs when multiple Innertube clients are tried.
+- `Video.getFormats()` now fails clearly when no streaming formats are returned instead of substituting unrelated search metadata.
+- Normalize YouTube thumbnails against the actual video ID and reject mismatched video thumbnails.
+- Removed unnecessary search requests that were previously used only to replace thumbnails.
+- Improved Recommendations parsing for compact, regular and lockup video models.
+- Recommendations now preserve order, skip the source video and stably remove duplicate video IDs.
 
-### Fixed
-- 🐛 **Duplicate method**: Removed duplicate `__enhanceThumbnailsAsync` in video.py
-- ⚡ **Async correctness**: Fixed async/sync inconsistencies
-- 🔗 **Import paths**: Updated all module imports
+### StreamURLFetcher
+- Removed the yt-dlp dependency from stream URL extraction.
+- Added direct video ID/link input in addition to existing format-dictionary input.
+- Added sync/async PO-token and visitor-data forwarding.
+- Resolve direct URLs and cipher entries that already contain a usable signature.
+- Surface encrypted signature entries under `unresolved` instead of returning invalid URLs.
+- Mark URLs that still contain an `n` parameter with `throttled=True`.
 
-### what i Tested personally
-- ✅ Indian songs (Kesariya, Arijit Singh, T-Series)
-- ✅ Myanmar songs (love songs, Burmese music)
-- ✅ Video search (sync & async)
-- ✅ Channel search
-- ✅ Pagination
-- ✅ Video metadata retrieval
+### Suggestions, transcripts and channels
+- Fixed the duplicate `Suggestions.get` definition that made one public path unreachable.
+- Forward `YTS_IDENTITY_TOKEN` correctly and raise explicit errors on non-200 suggestion responses.
+- Fixed transcript language selection and isolated native caption requests from global cookie state.
+- Kept the optional yt-dlp transcript fallback behind the `transcript` extra.
+- Improved channel playlist pagination order and stable duplicate handling.
 
----
-
-## [2.0.0] - Previous Release
-
-### Added
-- 📱 ANDROID client as default
-- ✨ Async Video methods
-- 🔄 Enhanced stream URL handling
-
-### Changed
-- 🔢 Updated Latest web client versions & parsing
-- ⚙️ httpx 0.28+ compatibility
-
-### Fixed
-- Multiple bug fixes & code cleaned for rediabilty across modules
-
----
-
-## Migration Guide
-
-### To 2.0.0
-
-**Async imports:**
-```python
-# Use this
-from youtubesearchpython.future import VideosSearch
-
-# Sync remains same  
-from youtubesearchpython import VideosSearch
-```
-
----
-
-[2.0.0]: https://github.com/BillaSpace/yt-search-python/releases/tag/v2.0.0
-
+### Packaging and compatibility
+- Package version is `2.2.1` in sync/async namespaces and build metadata.
+- Added an explicit `handlers` package marker so compatibility handlers are included deterministically.
+- Included `README.md`, `CHANGELOG.md` and `LICENSE` in source distributions.
+- Set the supported runtime floor to Python 3.9+ and retained legacy public search imports.
+- Audited Python 3.14-facing asyncio/deprecation behavior and hardened simultaneous multi-loop runtime use.
 
 ## [2.1.1] - 2026-07-30
+- Consolidated request/component handling, fixed multiple API crashes and improved httpx 0.28 compatibility.
 
-- fix: eliminate request-layer fd leak, dedupe HTTP/component handlers, fix crashes across hashtag/playlist/comments/transcript
+## [2.0.0] - 2026-01-18
+- Added the `future` async namespace and modernized the project structure.
 
-- Replace per-call ephemeral httpx clients with a single pooled sync+async
-  client shared across the whole library (root cause of "Too many open
-  files" under sustained load)
-- Add one canonical innertube request-body builder; fixes a recurring bug
-  where hl/gl were set on a dead top-level "client" key instead of nested
-  under context.client (search, channelsearch, hashtag comments,
-  recommendations, video fallback search, legacy requesthandler)
-- Fix Suggestions.get being permanently unreachable due to a duplicate
-  method name silently overwriting it in the class body (sync + async)
-- Fix Hashtag.get missing required constructor args; give Hashtag/Channel/
-  Comments real instance APIs instead of static-only stubs
-- Fix Playlist 'NoneType' object is not iterable crash; add graceful
-  Mix/Radio playlist detection instead of a bare crash
-- Fix a NameError crash in legacy comment parsing (undefined variable)
-- Fix Video.getFormats referencing a nonexistent attribute
-- Fix Transcript language-selection param being silently ignored
-- Fix shelf title returning null for runs-based titles; fix a
-  trailing-comma bug that wrapped playlist thumbnails in a 1-tuple
-- Fix a crash in the wildcard JSON path-resolver on missing intermediate
-  keys
-- Dedupe two independent componenthandler.py copies and a third urllib-
-  based request implementation into the canonical httpx-based one
-- Strip leftover debug prints and disk writes (comments_response.json)
-- Remove scratch/debug test scripts; rewrite README.md for better readability & set of examples exclusively 

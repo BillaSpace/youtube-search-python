@@ -1,204 +1,245 @@
-# yt-search-python v2.1.1 🚩
+<p align="center">
+  <img src="https://raw.githubusercontent.com/BillaSpace/yt-search-python/legacy/assets/yt-search-python-banner.jpg" alt="yt-search-python" width="100%">
+</p>
 
+<p align="center">
+  <a href="https://pypi.org/project/yt-search-python/"><img src="https://img.shields.io/pypi/v/yt-search-python?label=PyPI" alt="PyPI"></a>
+  <img src="https://img.shields.io/pypi/pyversions/yt-search-python" alt="Python versions">
+  <a href="https://github.com/BillaSpace/yt-search-python/blob/legacy/LICENSE"><img src="https://img.shields.io/github/license/BillaSpace/yt-search-python" alt="License"></a>
+  <a href="https://github.com/BillaSpace/yt-search-python/tree/legacy"><img src="https://img.shields.io/badge/API-Sync%20%2B%20Async-blue" alt="Sync and Async"></a>
+</p>
 
+# yt-search-python v2.2.1
 
-[![GitHub Stars](https://img.shields.io/github/stars/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/BillaSpace/youtube-search-python?style=for-the-badge&logo=github)](https://github.com/BillaSpace/youtube-search-python/network)
-[![Python Version](https://img.shields.io/badge/python-3.7+-blue.svg?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/github/license/BillaSpace/youtube-search-python?style=for-the-badge)](https://github.com/BillaSpace/youtube-search-python/blob/main/LICENSE)
+Search YouTube videos, playlists, channels, comments, transcripts, recommendations, suggestions, and stream metadata without the YouTube Data API v3.
 
-**Search and read YouTube data (videos, playlists, channels, comments, transcripts) without the YouTube Data API v3 — no API key, no quota limits.**
-
-[Installation](#installation) • [Quick Start](#quick-start) • [Key Classes](#key-classes) • [Examples](#examples) • [Known Limitations](#known-limitations)
-
----
-
-## What this library does
-
-It talks to YouTube's own internal (`innertube`) endpoints — the same ones the youtube.com website itself calls — and parses the JSON back into clean Python structures. Both a synchronous API (`youtubesearchpython`) and an async API (`youtubesearchpython.future`) are provided, sharing the same underlying parsing logic so their results match.
-
-Previous users of `youtube-search-python`: replace `youtubesearchpython.__future__` imports with `youtubesearchpython.future` — nothing else changes.
-
----
+- Python 3.9+
+- Sync API: `youtubesearchpython`
+- Async API: `youtubesearchpython.future`
+- `httpx>=0.28.1`
+- No YouTube Data API key or quota
 
 ## Installation
 
 ```bash
-pip3 install yt-search-python
+pip install yt-search-python
 ```
 
-Or from source:
-```bash
-pip install git+https://github.com/BillaSpace/yt-search-python.git
-```
+## Search
 
----
-
-## Quick Start
-
-**Search for videos**
 ```python
 from youtubesearchpython import VideosSearch
 
-search = VideosSearch('Hindutva', limit=10)
-print(search.result())
-```
-
-**Get video info + streaming formats**
-```python
-from youtubesearchpython import Video
-
-video = Video.get('https://www.youtube.com/watch?v=aqz-KE-bpKQ')
-print(video['title'], video['viewCount'])
-```
-
-**Async**
-```python
-import asyncio
-from youtubesearchpython.future import VideosSearch, Video
-
-async def main():
-    search = VideosSearch('Learn Python', limit=5)
-    print(search.result())
-    await search.next()          # next page
-    print(search.result())
-
-    video = await Video.get('aqz-KE-bpKQ')
-    print(video['title'])
-
-asyncio.run(main())
-```
-
----
-
-## Key Classes
-
-**Search**
-- `VideosSearch`, `ChannelsSearch`, `PlaylistsSearch`, `CustomSearch`, `ChannelSearch`
-
-**Content**
-- `Video` — info + streaming formats (`Video.get`, `Video.getInfo`, `Video.getFormats`)
-- `Playlist` — one-shot `Playlist.get(...)`, or instantiate `Playlist(link)` for `.getNextVideos()` pagination
-- `Channel` — `Channel.get(...)`, or instantiate + `.init()` / `.next()` for pagination
-- `Comments` — `Comments.get(...)`, or instantiate + `.init()` / `.getNextComments()`
-- `Transcript` — `Transcript.get(link, params=<languageCode>)` to select a specific caption track
-- `Hashtag` — instantiate `Hashtag(tag, limit=...)` (fetches immediately) or `Hashtag.get(...)`
-- `Suggestions` — autocomplete text suggestions. `Suggestions.get(...)` for one-shot use, `Suggestions.session(...)` (async: same) to reuse a client across many calls
-- `Recommendations` — related/up-next videos for a video ID
-
-**Utility**
-- `StreamURLFetcher` — direct stream URLs (needs `yt-dlp` & `deno`installed in your system)
-- `ResultMode` — `.dict` or `.json` output
-
-Note: `Suggestions` (autocomplete text) and `Recommendations` (related videos) are deliberately separate classes — different endpoints, different data — not merged into one.
-
----
-
-## Examples
-
-**Advanced search with filters**
-```python
-from youtubesearchpython import CustomSearch, VideoSortOrder
-
-search = CustomSearch('Python', VideoSortOrder.viewCount, limit=10)
-print(search.result())
-```
-
-**Playlist videos (works with a URL or a bare ID)**
-```python
-from youtubesearchpython import Playlist
-
-playlist = Playlist.get('PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK')
-print(playlist['info']['title'], len(playlist['videos']))
-```
-
-**Comments**
-```python
-from youtubesearchpython import Comments
-
-comments = Comments.get('https://www.youtube.com/watch?v=aqz-KE-bpKQ')
-for c in comments['result'][:5]:
-    print(c['author']['name'], ':', c['content'])
-```
-
-**Search suggestions**
-```python
-from youtubesearchpython import Suggestions
-
-print(Suggestions.get('Arijit Singh', language='en', region='US'))
-```
-
-**Pagination**
-```python
-search = VideosSearch('Python', limit=10)
+search = VideosSearch("Arijit Singh", limit=10)
 print(search.result())
 search.next()
 print(search.result())
 ```
 
-**Language & region**
+Live-only search is optional and backward compatible:
+
 ```python
-search = VideosSearch('Music', limit=10, language='es', region='ES')
+live = VideosSearch("news", limit=10, is_live=True)
+print(live.result())
 ```
 
-**Filters available**
-- Upload date: `VideoUploadDateFilter.lastHour`, `.today`, `.thisWeek`, `.thisMonth`, `.thisYear`
-- Duration: `VideoDurationFilter.short`, `.long`
-- Sort order: `VideoSortOrder.relevance`, `.uploadDate`, `.viewCount`, `.rating`
+Async search loads its first page on the first `await next()` call:
 
----
+```python
+import asyncio
+from youtubesearchpython.future import VideosSearch
 
-## Known Limitations
+async def main():
+    search = VideosSearch("Arijit Singh", limit=10)
+    first = await search.next()
+    print(first)
+    second = await search.next()
+    print(second)
 
-Being upfront about what this library can't do, rather than silently under-delivering:
+asyncio.run(main())
+```
 
-- **Mix / Radio playlists** (IDs starting with `RD…`) are auto-generated by YouTube through a different, session-based mechanism than regular playlists, and aren't returned by the standard browse endpoint this library uses. `Playlist.get()` will raise a clear `YouTubeParseError` identifying this case rather than crashing with an unrelated `TypeError` — but it won't fetch the mix's videos.
-- **Recommendations** reflect what YouTube's own backend returns for an anonymous, session-less request to the `/next` endpoint — without real watch history or a signed-in session, YouTube itself mixes in generic suggestions alongside genuinely related videos. This is backend behavior, not something a scraper can fully correct.
-- This library depends entirely on YouTube's internal response shapes, which change without notice. If something breaks, it's almost always a shape change on YouTube's end.
+## Video
 
----
+```python
+from youtubesearchpython import Video
 
-Covers all search classes, content retrieval, comments/recommendations/suggestions, `StreamURLFetcher`, transcripts — both sync and async. 
+info = Video.getInfo("pnxL4OOzPEc")
+formats = Video.getFormats("pnxL4OOzPEc")
+```
 
----
+PO token and visitor data can be supplied when required by the selected YouTube client/session:
 
-## Contributing
+```python
+formats = Video.getFormats(
+    "pnxL4OOzPEc",
+    po_token="YOUR_PO_TOKEN",
+    visitor_data="YOUR_VISITOR_DATA",
+)
+```
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit and push
-4. Open a Pull Request
+`ResultMode.dict` and `ResultMode.json` are supported by video APIs.
 
----
+## StreamURLFetcher
+
+`StreamURLFetcher` no longer uses yt-dlp. It can process a `Video.getFormats()` result or fetch the format data from a video ID/link itself.
+
+```python
+from youtubesearchpython import StreamURLFetcher
+
+fetcher = StreamURLFetcher(po_token="YOUR_PO_TOKEN", visitor_data="YOUR_VISITOR_DATA")
+url = fetcher.get("pnxL4OOzPEc", 18)
+all_streams = fetcher.getAll("pnxL4OOzPEc")
+```
+
+Existing dictionary input remains supported:
+
+```python
+from youtubesearchpython import Video, StreamURLFetcher
+
+formats = Video.getFormats("pnxL4OOzPEc")
+result = StreamURLFetcher().getAll(formats)
+print(result["streams"])
+print(result["unresolved"])
+```
+
+Direct URLs and cipher entries that already contain a usable signature are returned without yt-dlp. Formats that still require YouTube's encrypted player-JavaScript signature deciphering are returned under `unresolved` instead of being presented as working URLs. URLs that still contain an `n` parameter are marked with `throttled=True` so callers can make an informed choice rather than silently receiving a falsely-deciphered URL.
+
+## Playlists
+
+Regular playlists and YouTube Mix/Radio playlists (`RD...`) use YouTube's native Innertube endpoints.
+
+```python
+from youtubesearchpython import Playlist
+
+normal = Playlist.get("PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK")
+mix = Playlist.get("https://youtube.com/playlist?list=RDpnxL4OOzPEc&playnext=1")
+```
+
+Mix results preserve YouTube's returned song order. Duplicate video IDs are removed without re-sorting the result. Generic comment/engagement continuation tokens from `/next` responses are not treated as playlist continuations.
+
+For regular playlists, instantiate `Playlist(link)` and call `getNextVideos()` for continuation pages.
+
+## Recommendations
+
+```python
+from youtubesearchpython import Recommendations
+
+related = Recommendations.get("pnxL4OOzPEc")
+```
+
+Recommendation results preserve YouTube's response order, skip the source video, remove duplicate video IDs stably, and normalize thumbnails against each video's ID.
+
+## Suggestions
+
+```python
+from youtubesearchpython import Suggestions
+
+print(Suggestions.get("Guru Randhawa"))
+```
+
+`YTS_PROXY` and `YTS_IDENTITY_TOKEN` environment variables are supported by the suggestions transport.
+
+## Comments, transcripts, channels and hashtags
+
+```python
+from youtubesearchpython import Comments, Transcript, Channel, Hashtag
+
+comments = Comments.get("pnxL4OOzPEc")
+transcript = Transcript.get("pnxL4OOzPEc", params="en")
+channel = Channel.get("UC_x5XG1OV2P6uZZ5FSM9Ttw")
+hashtag = Hashtag.get("music", limit=10)
+```
+
+Transcript retrieval first uses YouTube's native caption/player flow. The optional `transcript` extra keeps the legacy yt-dlp caption fallback available:
+
+```bash
+pip install 'yt-search-python[transcript]'
+```
+
+## HTTP lifecycle
+
+The library uses one canonical `httpx` transport layer. Idle keep-alive retention is disabled to avoid stale pooled sockets in long-running bots/services.
+
+Sync shutdown:
+
+```python
+# Optional forced teardown only
+from youtubesearchpython import close_clients
+close_clients()
+```
+
+Async shutdown:
+
+```python
+# Optional forced teardown only
+from youtubesearchpython.future import aclose_clients
+await aclose_clients()
+```
+
+Proxy requests use scoped clients that are closed after each request. Temporary downloaded cookie files are also ownership-tracked and cleaned without deleting user-owned cookie files.
+
+## Main API
+
+Search:
+- `Search`
+- `VideosSearch`
+- `ChannelsSearch`
+- `PlaylistsSearch`
+- `CustomSearch`
+- `ChannelSearch`
+
+Content:
+- `Video`
+- `Playlist`
+- `Channel`
+- `Comments`
+- `Transcript`
+- `Hashtag`
+- `Suggestions`
+- `Recommendations`
+
+Streaming:
+- `StreamURLFetcher`
+
+Utilities:
+- `ResultMode`
+- `SearchMode`
+- `VideoUploadDateFilter`
+- `VideoDurationFilter`
+- `VideoSortOrder`
+- `ChannelRequestType`
+
+## Compatibility notes
+
+- `youtubesearchpython.future` is the supported async namespace.
+- Legacy `SearchVideos` and `SearchPlaylists` imports remain available.
+- YouTube's internal response structures and anti-abuse requirements can change without notice.
+- A PO token does not replace player JavaScript signature or `n`-challenge transformation when YouTube requires those for a format.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See `LICENSE`.
 
-## Disclaimer
+Current maintainer: Prakhar Shukla / BillaSpace. Original project by Hitesh Kumar Saini (alexmercerind).
 
-Not affiliated with YouTube or Google. Uses YouTube's publically available internal endpoints, which may change without notice. Use responsibly and in accordance with YouTube's Terms of Service.
+### Optional PO token environment variables
 
-## Credits
+`Video` and `StreamURLFetcher` keep their existing arguments, but can also read credentials from the environment when explicit values are not passed:
 
-» Current maintainer: [Prakhar Shukla](https://github.com/BillaSpace) 
+```bash
+export YT_PO_TOKEN="..."
+export YT_VISITOR_DATA="..."
+```
 
-» Original author: [Hitesh Kumar Saini](https://github.com/alexmercerind)
+Aliases `YOUTUBE_PO_TOKEN` and `YOUTUBE_VISITOR_DATA` are also supported. Explicit function/class arguments always take precedence over environment values.
 
-<details>
-<summary>Full acknowledgements</summary>
 
-- Thanks to [CertifiedCoder](https://github.com/CertifiedCoder) for his work on the request layer[ v2.0.0.]
-- 
-- Built on top of the original `youtube-search-python` project and its contributors.
+## Python compatibility
 
-</details>
+- Python 3.9+
+- Runtime-tested on Python 3.13.5
+- Audited against Python 3.14 asyncio removals/deprecations; the library uses `asyncio.get_running_loop()` and does not depend on the deprecated event-loop policy APIs.
+- HTTP transport uses the tested `httpx>=0.28.1,<1.0` range.
 
----
-
-<div align="center">
-
-• [Report a bug](https://github.com/BillaSpace/yt-search-python/issues) 
-• [Request a feature](https://github.com/BillaSpace/yt-search-python/issues)
-
-</div>
+HTTP clients are managed internally. Normal sync applications require no explicit shutdown call, and async clients are closed automatically when their owning event loop shuts down gracefully (including `asyncio.run()`). `close_clients()` and `aclose_clients()` remain available only for optional forced teardown, tests, or unusual lifecycle control.

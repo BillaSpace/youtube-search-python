@@ -1,7 +1,6 @@
 from typing import List, Union
 import json
-from youtubesearchpython.handlers.componenthandler import ComponentHandler
-from youtubesearchpython.handlers.requesthandler import RequestHandler
+from youtubesearchpython.handlers import ComponentHandler, RequestHandler
 from youtubesearchpython.core.constants import *
 
 def overrides(interface_class):
@@ -97,11 +96,11 @@ class LegacyComponentHandler(RequestHandler, ComponentHandler):
 
 
 class LegacySearchInternal(LegacyComponentHandler):
-    exception = False
-    resultComponents = []
-    responseSource = []
-
     def __init__(self, keyword, offset, mode, max_results, language, region):
+        self.index = 0
+        self.exception = False
+        self.resultComponents = []
+        self.responseSource = []
         self.page = offset
         self.query = keyword
         self.mode = mode
@@ -109,7 +108,7 @@ class LegacySearchInternal(LegacyComponentHandler):
         self.language = language
         self.region = region
         self.continuationKey = None
-        self.timeout = None
+        self.timeout = 10
 
     def result(self) -> Union[str, dict, list, None]:
         '''Returns the search result.

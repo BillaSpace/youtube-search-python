@@ -1,36 +1,27 @@
-"""
-DEPRECATED transport used only by `youtubesearchpython.legacy` (SearchVideos /
-SearchPlaylists). This used to be a third, independent copy of the same
-"post an innertube search request, then walk contentPath" logic already
-implemented in `core/search.py`, but built on raw `urllib.request` instead of
-the shared httpx-based `RequestCore` - a different transport stack with the
-same `hl`/`gl` top-level-key bug the rest of the library had. It now reuses
-the single canonical implementation (pooled httpx client, correctly nested
-request body) instead of maintaining its own copy.
-"""
 import json
 
 from youtubesearchpython.core.componenthandler import ComponentHandler
 from youtubesearchpython.core.constants import *
-from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubeParseError
+from youtubesearchpython.core.requests import YouTubeRequestError, YouTubeParseError
 from youtubesearchpython.core.requests import RequestCore
 
 
 class RequestHandler(RequestCore, ComponentHandler):
     def _getRequestBody(self) -> dict:
-        overrides = {'query': self.query, 'client': {'hl': self.language, 'gl': self.region}}
-        if getattr(self, 'searchPreferences', None):
-            overrides['params'] = self.searchPreferences
+        overrides = {'client': {'hl': self.language, 'gl': self.region}}
         if getattr(self, 'continuationKey', None):
             overrides['continuation'] = self.continuationKey
+        else:
+            overrides['query'] = self.query
+            if getattr(self, 'searchPreferences', None):
+                overrides['params'] = self.searchPreferences
         return overrides
 
     def _makeRequest(self) -> None:
         self.url = 'https://www.youtube.com/youtubei/v1/search?key=' + searchKey
         self.data = self.buildInnertubeBody(**self._getRequestBody())
-        # `timeout` may not be set by every legacy caller
         if not hasattr(self, 'timeout'):
-            self.timeout = None
+            self.timeout = 10
         try:
             response = self.syncPostRequest()
             if response.status_code != 200:
@@ -43,7 +34,9 @@ class RequestHandler(RequestCore, ComponentHandler):
 
     def _parseSource(self) -> None:
         try:
-            if not self.continuationKey:
+            continuing = self.continuationKey is not None
+            self.continuationKey = None
+            if not continuing:
                 responseContent = self._getValue(json.loads(self.response), contentPath)
             else:
                 responseContent = self._getValue(json.loads(self.response), continuationContentPath)
@@ -64,3 +57,10 @@ class RequestHandler(RequestCore, ComponentHandler):
         except Exception as e:
             raise YouTubeParseError(f'Failed to parse YouTube response: {str(e)}')
             
+
+
+from youtubesearchpython.core.componenthandler import ComponentHandler, getValue, getVideoId
+import sys as _sys
+from youtubesearchpython.core import componenthandler as _componenthandler
+_sys.modules[f'{__name__}.componenthandler']=_componenthandler
+_sys.modules[f'{__name__}.requesthandler']=_sys.modules[__name__]

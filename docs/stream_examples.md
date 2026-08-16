@@ -1,72 +1,31 @@
-# StreamURLFetcher Examples
+# StreamURLFetcher
 
-## StreamURLFetcher.get()
+## From a video ID or URL
 
-### Basic Usage
 ```python
-from youtubesearchpython import *
+from youtubesearchpython import StreamURLFetcher
 
 fetcher = StreamURLFetcher()
-video = Video.get("https://www.youtube.com/watch?v=aqz-KE-bpKQ")
-url = fetcher.get(video, 251)
-print(url)
+print(fetcher.get("pnxL4OOzPEc", 18))
+print(fetcher.getAll("pnxL4OOzPEc"))
 ```
 
-### Example Output
-Returns a direct stream URL string like:
-```
-"https://r6---sn-gwpa-5bgk.googlevideo.com/videoplayback?expire=1610798125&ei=zX8CYITXEIGKz7sP9MWL0AE&ip=..."
-```
+## From `Video.getFormats`
 
-## StreamURLFetcher.getAll()
-
-### Basic Usage
 ```python
-from youtubesearchpython import *
+from youtubesearchpython import Video, StreamURLFetcher
 
-fetcher = StreamURLFetcher()
-video = Video.get("https://www.youtube.com/watch?v=aqz-KE-bpKQ")
-allUrls = fetcher.getAll(video)
-print(allUrls)
+formats = Video.getFormats("pnxL4OOzPEc")
+result = StreamURLFetcher().getAll(formats)
+print(result["streams"])
+print(result["unresolved"])
 ```
 
-### Example Output Structure
-```json
-{
-    "streams": [
-        {
-            "url": "https://...",
-            "type": "video/mp4; codecs=\"avc1.42001E, mp4a.40.2\"",
-            "quality": "medium",
-            "itag": 18,
-            "bitrate": 599167,
-            "is_otf": false
-        },
-        {
-            "url": "https://...",
-            "type": "video/mp4; codecs=\"avc1.64001F, mp4a.40.2\"",
-            "quality": "hd720",
-            "itag": 22,
-            "bitrate": 1340380,
-            "is_otf": false
-        }
-    ]
-}
+## PO token
+
+```python
+fetcher = StreamURLFetcher(po_token="TOKEN", visitor_data="VISITOR_DATA")
+result = fetcher.getAll("pnxL4OOzPEc")
 ```
 
-### Available Quality Levels
-- `hd2160` - 4K resolution
-- `hd1440` - 2K resolution  
-- `hd720` - 720p HD
-- `medium` - 360p
-- `tiny` - Audio only
-
-### Common ITags
-- **Video+Audio**: 18 (360p), 22 (720p)
-- **Video Only**: 134 (360p), 135 (480p), 136 (720p), 137 (1080p)
-- **Audio Only**: 249 (opus 50kbps), 250 (opus 70kbps), 251 (opus
--  160kbps)
-
-### Optional Cookies Support
-Picks netscape format cookies.txt file directly from your project root
-or directly pass COOKIE_URL via your env ( supports pastebin / batbin or raw netscape urls)
+The stream fetcher does not use yt-dlp. Direct URLs and already-signed cipher URLs are returned. Encrypted signature entries that still require YouTube player-JavaScript deciphering are exposed under `unresolved`. URLs containing an `n` query parameter are marked with `throttled=True`.

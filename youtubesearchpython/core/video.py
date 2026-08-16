@@ -2,17 +2,17 @@ import copy
 import json
 from typing import Union, List, Optional
 from urllib.parse import urlencode
-import httpx
 
 from youtubesearchpython.core.constants import *
-from youtubesearchpython.core.requests import RequestCore, _get_sync_client, _get_async_client
+from youtubesearchpython.core.requests import RequestCore, get_env_auth
 from youtubesearchpython.core.componenthandler import getValue, getVideoId
-from youtubesearchpython.core.exceptions import YouTubeRequestError, YouTubeParseError
+from youtubesearchpython.core.requests import YouTubeRequestError, YouTubeParseError
 from youtubesearchpython.core.utils import (
     get_cleaned_url,
     format_view_count,
     format_duration,
-    format_published_time
+    format_published_time,
+    normalize_thumbnails
 )
 
 CLIENTS = {
@@ -64,28 +64,30 @@ CLIENTS = {
 }
 
 class VideoCore(RequestCore):
-    def __init__(self, videoLink: str, componentMode: str, resultMode: int, timeout: Optional[int], enableHTML: bool, overridedClient: str = "ANDROID"):
+    def __init__(self, videoLink: str, componentMode: str, resultMode: int, timeout: Optional[int], enableHTML: bool, overridedClient: str = "ANDROID", po_token: str = None, visitor_data: str = None, proxy: str = None):
         super().__init__(timeout=timeout)
-        self.timeout = timeout
         self.resultMode = resultMode
         self.componentMode = componentMode
         self.videoLink = get_cleaned_url(videoLink)
         self.enableHTML = enableHTML
         self.overridedClient = overridedClient
+        self.po_token, self.visitor_data = get_env_auth(po_token, visitor_data)
+        self.proxy = proxy
+        self.HTMLresponseSource = {}
 
     def post_request_only_html_processing(self):
         self.__getVideoComponent(self.componentMode)
-        self.result = self.__videoComponent
+        self.result = self.__result(self.resultMode)
 
     def post_request_processing(self):
         self.__parseSource()
         self.__getVideoComponent(self.componentMode)
-        self.result = self.__videoComponent
+        self.result = self.__result(self.resultMode)
 
     async def async_post_request_processing(self):
         self.__parseSource()
         await self.__getVideoComponentAsync(self.componentMode)
-        self.result = self.__videoComponent
+        self.result = self.__result(self.resultMode)
 
     def prepare_innertube_request(self):
         self.url = 'https://www.youtube.com/youtubei/v1/player' + "?" + urlencode({
@@ -95,53 +97,110 @@ class VideoCore(RequestCore):
             "videoId": getVideoId(self.videoLink)
         })
         self.data = copy.deepcopy(CLIENTS[self.overridedClient])
+        client = self.data.setdefault("context", {}).setdefault("client", {})
+        if self.visitor_data:
+            client["visitorData"] = self.visitor_data
+        if self.po_token:
+            self.data["serviceIntegrityDimensions"] = {"poToken": self.po_token}
+
+    @staticmethod
+    def _streaming_score(source: dict) -> int:
+        data = (source or {}).get("streamingData") or {}
+        formats = list(data.get("formats") or []) + list(data.get("adaptiveFormats") or [])
+        direct = sum(1 for item in formats if item.get("url"))
+        usable_cipher = sum(1 for item in formats if (item.get("signatureCipher") or item.get("cipher")) and "s=" not in (item.get("signatureCipher") or item.get("cipher") or ""))
+        return direct * 1000 + usable_cipher * 100 + len(formats)
 
     async def async_create(self):
+        best_response = None
+        best_source = None
+        best_score = -1
         for client in ["ANDROID", "WEB", "MWEB", "TV_EMBED"]:
             self.overridedClient = client
             self.prepare_innertube_request()
             response = await self.asyncPostRequest()
-            if response is not None and response.status_code == 200:
+            if response is None or response.status_code != 200:
+                continue
+            try:
+                source = response.json()
+            except Exception:
+                continue
+            if "videoDetails" not in source:
+                continue
+            if self.componentMode == "getInfo":
                 self.response = response.text
-                self.__parseSource()
-                if self.responseSource and 'videoDetails' in self.responseSource:
-                    await self.async_post_request_processing()
-                    return
-
+                self.responseSource = source
+                await self.__getVideoComponentAsync(self.componentMode)
+                self.result = self.__result(self.resultMode)
+                return
+            score = self._streaming_score(source)
+            if score > best_score:
+                best_response, best_source, best_score = response.text, source, score
+            if score >= 1000:
+                break
+        if best_source is not None and (self.componentMode != "getFormats" or best_score > 0):
+            self.response = best_response
+            self.responseSource = best_source
+            await self.__getVideoComponentAsync(self.componentMode)
+            self.result = self.__result(self.resultMode)
+            return
+        if self.componentMode == "getFormats":
+            raise YouTubeRequestError(f"Could not fetch streaming formats for {self.videoLink}.")
         try:
             search_data = await self.__getVideoDataFromSearchAsync(getVideoId(self.videoLink))
             if search_data.get("title"):
                 self.resultComponents = search_data
-                self.result = search_data
                 self.__videoComponent = search_data
+                self.result = self.__result(self.resultMode)
                 return
         except Exception:
             pass
-
         raise YouTubeRequestError(f"Could not fetch video details for {self.videoLink} after trying multiple clients.")
 
     def sync_create(self):
+        best_response = None
+        best_source = None
+        best_score = -1
         for client in ["ANDROID", "WEB", "MWEB", "TV_EMBED"]:
             self.overridedClient = client
             self.prepare_innertube_request()
             response = self.syncPostRequest()
-            if response is not None and response.status_code == 200:
+            if response is None or response.status_code != 200:
+                continue
+            try:
+                source = response.json()
+            except Exception:
+                continue
+            if "videoDetails" not in source:
+                continue
+            if self.componentMode == "getInfo":
                 self.response = response.text
-                self.__parseSource()
-                if self.responseSource and 'videoDetails' in self.responseSource:
-                    self.post_request_processing()
-                    return
-
+                self.responseSource = source
+                self.__getVideoComponent(self.componentMode)
+                self.result = self.__result(self.resultMode)
+                return
+            score = self._streaming_score(source)
+            if score > best_score:
+                best_response, best_source, best_score = response.text, source, score
+            if score >= 1000:
+                break
+        if best_source is not None and (self.componentMode != "getFormats" or best_score > 0):
+            self.response = best_response
+            self.responseSource = best_source
+            self.__getVideoComponent(self.componentMode)
+            self.result = self.__result(self.resultMode)
+            return
+        if self.componentMode == "getFormats":
+            raise YouTubeRequestError(f"Could not fetch streaming formats for {self.videoLink}.")
         try:
             search_data = self.__getVideoDataFromSearch(getVideoId(self.videoLink))
             if search_data.get("title"):
                 self.resultComponents = search_data
-                self.result = search_data
                 self.__videoComponent = search_data
+                self.result = self.__result(self.resultMode)
                 return
         except Exception:
             pass
-
         raise YouTubeRequestError(f"Could not fetch video details for {self.videoLink} after trying multiple clients.")
 
     def prepare_html_request(self):
@@ -151,17 +210,28 @@ class VideoCore(RequestCore):
             'racyCheckOk': True,
             "videoId": getVideoId(self.videoLink)
         })
-        self.data = CLIENTS["MWEB"]
+        self.data = copy.deepcopy(CLIENTS["MWEB"])
+        client = self.data.setdefault("context", {}).setdefault("client", {})
+        if self.visitor_data:
+            client["visitorData"] = self.visitor_data
+        if self.po_token:
+            self.data["serviceIntegrityDimensions"] = {"poToken": self.po_token}
 
     def sync_html_create(self):
         self.prepare_html_request()
-        response = self.syncPostRequest()
-        self.HTMLresponseSource = response.json()
+        try:
+            response = self.syncPostRequest()
+            self.HTMLresponseSource = response.json() if response is not None and response.status_code == 200 else {}
+        except Exception:
+            self.HTMLresponseSource = {}
 
     async def async_html_create(self):
         self.prepare_html_request()
-        response = await self.asyncPostRequest()
-        self.HTMLresponseSource = response.json()
+        try:
+            response = await self.asyncPostRequest()
+            self.HTMLresponseSource = response.json() if response is not None and response.status_code == 200 else {}
+        except Exception:
+            self.HTMLresponseSource = {}
 
     def __parseSource(self) -> None:
         try:
@@ -176,39 +246,6 @@ class VideoCore(RequestCore):
             return self.__videoComponent
         elif mode == ResultMode.json:
             return json.dumps(self.__videoComponent, indent=4)
-
-    def __checkThumbnailExists(self, url: str) -> bool:
-        try:
-            response = _get_sync_client().head(url, headers={"User-Agent": userAgent}, timeout=2, follow_redirects=True)
-            return response.status_code == 200
-        except Exception:
-            return False
-
-    async def __checkThumbnailExistsAsync(self, url: str) -> bool:
-        try:
-            response = await _get_async_client().head(url, headers={"User-Agent": userAgent}, timeout=2, follow_redirects=True)
-            return response.status_code == 200
-        except Exception:
-            return False
-
-    def __getBestHq720FromThumbnails(self, thumbnails: List[dict]) -> Union[dict, None]:
-        best_thumb = None
-        best_resolution = 0
-        for thumb in thumbnails:
-            url_value = thumb.get('url', '')
-            if 'hq720.jpg' in url_value:
-                width = thumb.get('width', 0)
-                height = thumb.get('height', 0)
-                resolution = width * height
-                if resolution > best_resolution:
-                    best_resolution = resolution
-                    full_url = url_value if url_value.startswith('http') else 'https:' + url_value
-                    best_thumb = {
-                        "url": full_url,
-                        "width": width,
-                        "height": height
-                    }
-        return best_thumb
 
     def __findVideoDataInSearchResults(self,search_contents:List[dict],video_id:str)->Optional[dict]:
         if not search_contents:return None
@@ -272,196 +309,84 @@ class VideoCore(RequestCore):
                 if isinstance(value,(dict,list)):stack.append(value)
         return None
 
-    def __getVideoDataFromSearch(self, video_id: str, video_title: Optional[str] = None) -> dict:
-        result = {
+    def __searchQueries(self, video_id: str, video_title: Optional[str] = None) -> list:
+        queries = [f"https://www.youtube.com/watch?v={video_id}", video_id]
+        if video_title:
+            queries.insert(0, video_title)
+        return queries
+
+    def __searchResult(self, data: dict, video_id: str) -> Optional[dict]:
+        search_contents = getValue(data, contentPath) or getValue(data, fallbackContentPath)
+        video_data = self.__findVideoDataInSearchResults(search_contents, video_id)
+        if not video_data:
+            return None
+        channel_id = getValue(video_data, ['ownerText', 'runs', 0, 'navigationEndpoint', 'browseEndpoint', 'browseId'])
+        return {
             'id': video_id,
-            'title': None,
-            'publishedTime': None,
-            'duration': None,
-            'viewCount': {'text': None, 'short': None},
-            'thumbnails': None,
-            'channel': {'name': None, 'id': None, 'link': None},
-            'link': f"https://www.youtube.com/watch?v={video_id}"
+            'title': getValue(video_data, ['title', 'runs', 0, 'text']),
+            'publishedTime': getValue(video_data, ['publishedTimeText', 'simpleText']) or getValue(video_data, ['publishedTimeText', 'runs', 0, 'text']),
+            'duration': format_duration(getValue(video_data, ['lengthText', 'simpleText'])),
+            'viewCount': {
+                'text': getValue(video_data, ['viewCountText', 'simpleText']),
+                'short': getValue(video_data, ['shortViewCountText', 'simpleText']),
+            },
+            'thumbnails': normalize_thumbnails(getValue(video_data, ['thumbnail', 'thumbnails']), video_id),
+            'channel': {
+                'name': getValue(video_data, ['ownerText', 'runs', 0, 'text']),
+                'id': channel_id,
+                'link': f"https://www.youtube.com/channel/{channel_id}" if channel_id else None,
+            },
+            'link': f"https://www.youtube.com/watch?v={video_id}",
         }
 
-        search_queries = []
-        if video_title:
-            search_queries.append(video_title)
-        search_queries.append(f"https://www.youtube.com/watch?v={video_id}")
-        search_queries.append(video_id)
-        for query in search_queries:
+    def __emptySearchResult(self, video_id: str) -> dict:
+        return {
+            'id': video_id, 'title': None, 'publishedTime': None, 'duration': None,
+            'viewCount': {'text': None, 'short': None}, 'thumbnails': None,
+            'channel': {'name': None, 'id': None, 'link': None},
+            'link': f"https://www.youtube.com/watch?v={video_id}",
+        }
+
+    def __prepareSearchRequest(self, query: str) -> None:
+        self.url = 'https://www.youtube.com/youtubei/v1/search?' + urlencode({'key': searchKey})
+        self.data = self.buildInnertubeBody(query=query, client={'hl': 'en', 'gl': 'US'})
+
+    def __getVideoDataFromSearch(self, video_id: str, video_title: Optional[str] = None) -> dict:
+        for query in self.__searchQueries(video_id, video_title):
             try:
-                request_body = self.buildInnertubeBody(query=query, client={'hl': 'en', 'gl': 'US'})
-                url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({'key': searchKey})
-                response = _get_sync_client().post(
-                    url,
-                    headers={"User-Agent": userAgent, "Content-Type": "application/json"},
-                    json=request_body,
-                    timeout=self.timeout if self.timeout else 10
-                )
+                self.__prepareSearchRequest(query)
+                response = self.syncPostRequest()
                 if response.status_code == 200:
-                    data = response.json()
-                    contents = getValue(data, contentPath)
-                    fallback_contents = getValue(data, fallbackContentPath)
-                    search_contents = contents if contents else fallback_contents
-                    video_data = self.__findVideoDataInSearchResults(search_contents, video_id)
-                    if video_data:
-                        result['title'] = getValue(video_data, ['title', 'runs', 0, 'text'])
-                        result['publishedTime'] = getValue(video_data, ['publishedTimeText', 'simpleText']) or getValue(video_data, ['publishedTimeText', 'runs', 0, 'text'])
-                        result['duration'] = format_duration(getValue(video_data, ['lengthText', 'simpleText']))
-                        result['viewCount'] = {
-                            'text': getValue(video_data, ['viewCountText', 'simpleText']),
-                            'short': getValue(video_data, ['shortViewCountText', 'simpleText'])
-                        }
-                        result['thumbnails']=[x for x in (getValue(video_data,['thumbnail','thumbnails']) or []) if isinstance(x,dict) and f"/vi/{video_id}/" in x.get("url","")]
-                        channel_id=getValue(video_data,['ownerText','runs',0,'navigationEndpoint','browseEndpoint','browseId'])
-                        result['channel']={
-                            'name':getValue(video_data,['ownerText','runs',0,'text']),
-                            'id':channel_id,
-                            'link':f"https://www.youtube.com/channel/{channel_id}" if channel_id else None
-                        }
-                        if result['thumbnails']:
-                            best_thumb = self.__getBestHq720FromThumbnails(result['thumbnails'])
-                            if best_thumb:
-                                result['hq720Thumbnail'] = best_thumb
-                        if result['title']:
-                            break
+                    result = self.__searchResult(response.json(), video_id)
+                    if result and result.get('title'):
+                        return result
             except Exception:
                 continue
-        return result
+        return self.__emptySearchResult(video_id)
 
     async def __getVideoDataFromSearchAsync(self, video_id: str, video_title: Optional[str] = None) -> dict:
-        result = {
-            'id': video_id,
-            'title': None,
-            'publishedTime': None,
-            'duration': None,
-            'viewCount': {'text': None, 'short': None},
-            'thumbnails': None,
-            'channel': {'name': None, 'id': None, 'link': None},
-            'link': f"https://www.youtube.com/watch?v={video_id}"
-        }
-        search_queries = []
-        if video_title:
-            search_queries.append(video_title)
-        search_queries.append(f"https://www.youtube.com/watch?v={video_id}")
-        search_queries.append(video_id)
-        for query in search_queries:
+        for query in self.__searchQueries(video_id, video_title):
             try:
-                request_body = self.buildInnertubeBody(query=query, client={'hl': 'en', 'gl': 'US'})
-                url = 'https://www.youtube.com/youtubei/v1/search' + '?' + urlencode({'key': searchKey})
-                response = await _get_async_client().post(
-                    url,
-                    headers={"User-Agent": userAgent, "Content-Type": "application/json"},
-                    json=request_body,
-                    timeout=self.timeout if self.timeout else 5
-                )
+                self.__prepareSearchRequest(query)
+                response = await self.asyncPostRequest()
                 if response.status_code == 200:
-                    data = response.json()
-                    contents = getValue(data, contentPath)
-                    fallback_contents = getValue(data, fallbackContentPath)
-                    search_contents = contents if contents else fallback_contents
-                    video_data = self.__findVideoDataInSearchResults(search_contents, video_id)
-                    if video_data:
-                        result['title'] = getValue(video_data, ['title', 'runs', 0, 'text'])
-                        result['publishedTime'] = getValue(video_data, ['publishedTimeText', 'simpleText']) or getValue(video_data, ['publishedTimeText', 'runs', 0, 'text'])
-                        result['duration'] = format_duration(getValue(video_data, ['lengthText', 'simpleText']))
-                        result['viewCount'] = {
-                            'text': getValue(video_data, ['viewCountText', 'simpleText']),
-                            'short': getValue(video_data, ['shortViewCountText', 'simpleText'])
-                        }
-                        result['thumbnails']=[x for x in (getValue(video_data,['thumbnail','thumbnails']) or []) if isinstance(x,dict) and f"/vi/{video_id}/" in x.get("url","")]
-                        channel_id=getValue(video_data,['ownerText','runs',0,'navigationEndpoint','browseEndpoint','browseId'])
-                        result['channel']={
-                            'name':getValue(video_data,['ownerText','runs',0,'text']),
-                            'id':channel_id,
-                            'link':f"https://www.youtube.com/channel/{channel_id}" if channel_id else None
-                        }
-
-                        if result['thumbnails']:
-                            best_thumb = self.__getBestHq720FromThumbnails(result['thumbnails'])
-                            if best_thumb:
-                                result['hq720Thumbnail'] = best_thumb
-
-                        if result['title']:
-                            break
+                    result = self.__searchResult(response.json(), video_id)
+                    if result and result.get('title'):
+                        return result
             except Exception:
                 continue
-        return result
+        return self.__emptySearchResult(video_id)
 
     def __enhanceThumbnails(self, thumbnails: List[dict], video_id: str, search_api_data: Optional[dict] = None) -> List[dict]:
-        if not thumbnails or not video_id:
-            return thumbnails
-        enhanced=[thumb for thumb in thumbnails if isinstance(thumb,dict) and f"/vi/{video_id}/" in thumb.get("url","")]
-        existing_urls={thumb.get("url","") for thumb in enhanced}
-        existing_base_urls = {url.split('?')[0] if '?' in url else url for url in existing_urls}
-        standard_thumbnails = [
-            {"url": f"https://i.ytimg.com/vi/{video_id}/default.jpg", "width": 120, "height": 90},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg", "width": 320, "height": 180},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg", "width": 480, "height": 360},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/sddefault.jpg", "width": 640, "height": 480},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg", "width": 1920, "height": 1080},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/hq720.jpg", "width": 1280, "height": 720},
-        ]
-
-        for thumb in standard_thumbnails:
-            base_url = thumb["url"]
-            if base_url not in existing_base_urls:
-                if self.__checkThumbnailExists(base_url):
-                    enhanced.append(thumb)
-                    
-        if search_api_data and search_api_data.get('hq720Thumbnail'):
-            optimized_hq720 = search_api_data['hq720Thumbnail']
-        else:
-            search_data = self.__getVideoDataFromSearch(video_id)
-            optimized_hq720 = search_data.get('hq720Thumbnail')
-
-        if optimized_hq720:
-            optimized_url = optimized_hq720["url"]
-            if optimized_url not in existing_urls and optimized_url.split('?')[0] not in existing_base_urls:
-                enhanced.append(optimized_hq720)
-        return enhanced
+        return normalize_thumbnails(thumbnails, video_id)
 
     async def __enhanceThumbnailsAsync(self, thumbnails: List[dict], video_id: str, search_api_data: Optional[dict] = None) -> List[dict]:
-        if not thumbnails or not video_id:
-            return thumbnails
-        enhanced=[thumb for thumb in thumbnails if isinstance(thumb,dict) and f"/vi/{video_id}/" in thumb.get("url","")]
-        existing_urls={thumb.get("url","") for thumb in enhanced}
-        existing_base_urls = {url.split('?')[0] if '?' in url else url for url in existing_urls}
-
-        standard_thumbnails = [
-            {"url": f"https://i.ytimg.com/vi/{video_id}/default.jpg", "width": 120, "height": 90},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/mqdefault.jpg", "width": 320, "height": 180},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg", "width": 480, "height": 360},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/sddefault.jpg", "width": 640, "height": 480},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/maxresdefault.jpg", "width": 1920, "height": 1080},
-            {"url": f"https://i.ytimg.com/vi/{video_id}/hq720.jpg", "width": 1280, "height": 720},
-        ]
-
-        for thumb in standard_thumbnails:
-            base_url = thumb["url"]
-            if base_url not in existing_base_urls:
-                if await self.__checkThumbnailExistsAsync(base_url):
-                    enhanced.append(thumb)
-        if search_api_data and search_api_data.get('hq720Thumbnail'):
-            optimized_hq720 = search_api_data['hq720Thumbnail']
-        else:
-            search_data = await self.__getVideoDataFromSearchAsync(video_id)
-            optimized_hq720 = search_data.get('hq720Thumbnail')
-
-        if optimized_hq720:
-            optimized_url = optimized_hq720["url"]
-            if optimized_url not in existing_urls and optimized_url.split('?')[0] not in existing_base_urls:
-                enhanced.append(optimized_hq720)
-
-        return enhanced
+        return normalize_thumbnails(thumbnails, video_id)
 
     def __getVideoComponent(self, mode: str) -> None:
         videoComponent = {}
         if mode in ["getInfo", None]:
             responseSource = getattr(self, "responseSource", None)
-            if self.enableHTML:
-                responseSource = self.HTMLresponseSource
             raw_view_count = getValue(responseSource, ["videoDetails", "viewCount"])
             raw_duration = getValue(responseSource, ["videoDetails", "lengthSeconds"])
             publish_date = getValue(
@@ -531,7 +456,7 @@ class VideoCore(RequestCore):
 
             search_api_data = None
             if component.get("id"):
-                needs_search_data = not component["publishedTime"] or (component.get("thumbnails") and component.get("id"))
+                needs_search_data = not component["publishedTime"]
                 if needs_search_data:
                     search_api_data = self.__getVideoDataFromSearch(component["id"], component.get("title"))
                     if not component["publishedTime"] and search_api_data.get("publishedTime"):
@@ -569,8 +494,8 @@ class VideoCore(RequestCore):
             else:
                 component["channel"]["link"] = None
 
-            if component.get("thumbnails") and component.get("id"):
-                component["thumbnails"] = self.__enhanceThumbnails(component["thumbnails"], component["id"], search_api_data)
+            if component.get("id"):
+                component["thumbnails"] = self.__enhanceThumbnails(component.get("thumbnails") or [], component["id"], search_api_data)
 
             videoComponent.update(component)
         if mode in ["getFormats", None]:
@@ -601,8 +526,6 @@ class VideoCore(RequestCore):
         videoComponent = {}
         if mode in ["getInfo", None]:
             responseSource = getattr(self, "responseSource", None)
-            if self.enableHTML:
-                responseSource = self.HTMLresponseSource
             raw_view_count = getValue(responseSource, ["videoDetails", "viewCount"])
             raw_duration = getValue(responseSource, ["videoDetails", "lengthSeconds"])
             publish_date = getValue(
@@ -673,7 +596,7 @@ class VideoCore(RequestCore):
 
             search_api_data = None
             if component.get("id"):
-                needs_search_data = not component["publishedTime"] or (component.get("thumbnails") and component.get("id"))
+                needs_search_data = not component["publishedTime"]
                 if needs_search_data:
                     search_api_data = await self.__getVideoDataFromSearchAsync(component["id"], component.get("title"))
                     if not component["publishedTime"] and search_api_data.get("publishedTime"):
@@ -711,8 +634,8 @@ class VideoCore(RequestCore):
             else:
                 component["channel"]["link"] = None
 
-            if component.get("thumbnails") and component.get("id"):
-                component["thumbnails"] = await self.__enhanceThumbnailsAsync(component["thumbnails"], component["id"], search_api_data)
+            if component.get("id"):
+                component["thumbnails"] = await self.__enhanceThumbnailsAsync(component.get("thumbnails") or [], component["id"], search_api_data)
 
             videoComponent.update(component)
         if mode in ["getFormats", None]:
@@ -738,3 +661,196 @@ class VideoCore(RequestCore):
         if "uploadDate" in videoComponent:
             del videoComponent["uploadDate"]
         self.__videoComponent = videoComponent
+
+
+from typing import Optional
+from urllib.parse import urlencode
+
+from youtubesearchpython.core.constants import *
+from youtubesearchpython.core.requests import RequestCore
+from youtubesearchpython.core.componenthandler import ComponentHandler, getValue
+from youtubesearchpython.core.requests import YouTubeRequestError
+from youtubesearchpython.core.utils import normalize_thumbnails
+
+
+class RecommendationsCore(RequestCore, ComponentHandler):
+    def __init__(self, videoId: str, timeout: Optional[int] = None):
+        super().__init__(timeout=timeout)
+        self.videoId = videoId
+        self.resultComponents = []
+
+    def prepare_request(self):
+        self.url = 'https://www.youtube.com/youtubei/v1/next' + "?" + urlencode({
+            'key': searchKey,
+            "prettyPrint": "false"
+        })
+        self.data = self.buildInnertubeBody(videoId=self.videoId, client={"hl": "en", "gl": "US"})
+
+    def parse_response(self, response_json: dict):
+        self.resultComponents = []
+        seen = {self.videoId}
+        watch_results = getValue(response_json, ["contents", "twoColumnWatchNextResults"])
+        secondary_results = getValue(watch_results, ["secondaryResults", "secondaryResults", "results"]) or getValue(watch_results, ["secondaryResults", "results"]) or getValue(response_json, ["onResponseReceivedEndpoints", 0, "appendContinuationItemsAction", "continuationItems"]) or []
+
+        def append(component):
+            video_id = component.get("id") if isinstance(component, dict) else None
+            if not video_id or video_id in seen:
+                return
+            seen.add(video_id)
+            self.resultComponents.append(component)
+
+        for item in secondary_results:
+            if "lockupViewModel" in item:
+                append(self._getLockupComponent(item, findVideos=True, findChannels=False, findPlaylists=False))
+            elif compactVideoElementKey in item:
+                append(self._getRecommendationsComponent(item[compactVideoElementKey]))
+            elif videoElementKey in item:
+                append(self._getRecommendationsComponent(item[videoElementKey]))
+            elif itemSectionKey in item:
+                for s_item in getValue(item, [itemSectionKey, "contents"]) or []:
+                    if "lockupViewModel" in s_item:
+                        append(self._getLockupComponent(s_item, findVideos=True, findChannels=False, findPlaylists=False))
+                    elif compactVideoElementKey in s_item:
+                        append(self._getRecommendationsComponent(s_item[compactVideoElementKey]))
+                    elif videoElementKey in s_item:
+                        append(self._getRecommendationsComponent(s_item[videoElementKey]))
+
+    def _getRecommendationsComponent(self, video: dict) -> dict:
+        component = {
+            'type':                           'video',
+            'id':                              self._getValue(video, ['videoId']),
+            'title':                           self._getValue(video, ['title', 'simpleText']) or self._getValue(video, ['title', 'runs', 0, 'text']),
+            'publishedTime':                   self._getValue(video, ['publishedTimeText', 'simpleText']),
+            'duration':                        self._getValue(video, ['lengthText', 'simpleText']),
+            'viewCount': {
+                'text':                        self._getValue(video, ['viewCountText', 'simpleText']),
+                'short':                       self._getValue(video, ['shortViewCountText', 'simpleText']),
+            },
+            'thumbnails':                      normalize_thumbnails(self._getValue(video, ['thumbnail', 'thumbnails']), self._getValue(video, ['videoId'])),
+            'channel': {
+                'name':                        self._getValue(video, ['longBylineText', 'runs', 0, 'text']) or self._getValue(video, ['shortBylineText', 'runs', 0, 'text']),
+                'id':                          self._getValue(video, ['longBylineText', 'runs', 0, 'navigationEndpoint', 'browseEndpoint', 'browseId']) or self._getValue(video, ['shortBylineText', 'runs', 0, 'navigationEndpoint', 'browseEndpoint', 'browseId']),
+            },
+            'isLive':                          self._isLiveVideo(video),
+            'accessibility': {
+                'title':                       self._getValue(video, ['title', 'accessibility', 'accessibilityData', 'label']),
+                'duration':                    self._getValue(video, ['lengthText', 'accessibility', 'accessibilityData', 'label']),
+            },
+        }
+        component['link'] = 'https://www.youtube.com/watch?v=' + (component['id'] or "")
+        if component['channel']['id']:
+            component['channel']['link'] = 'https://www.youtube.com/channel/' + component['channel']['id']
+        return component
+
+    def _parse_http_response(self, response):
+        if response.status_code != 200:
+            raise YouTubeRequestError(f"Invalid status code {response.status_code} for recommendations request")
+        self.parse_response(response.json())
+
+    async def async_create(self):
+        self.prepare_request()
+        self._parse_http_response(await self.asyncPostRequest())
+
+    def sync_create(self):
+        self.prepare_request()
+        self._parse_http_response(self.syncPostRequest())
+
+
+import copy
+import urllib.parse
+from typing import Optional
+
+from youtubesearchpython.core.componenthandler import getValue
+from youtubesearchpython.core.requests import RequestCore, get_env_auth
+
+
+class StreamURLFetcherCore(RequestCore):
+    def __init__(self, proxy: str = None, cookies_file: str = None, po_token: str = None, visitor_data: str = None):
+        super().__init__()
+        self.proxy = proxy
+        self.cookies_file = cookies_file
+        self.po_token, self.visitor_data = get_env_auth(po_token, visitor_data)
+        self.video_id = None
+        self._streams = []
+        self._unresolved = []
+
+    def close(self) -> None:
+        return None
+
+    async def aclose(self) -> None:
+        return None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.aclose()
+
+    def set_po_token(self, po_token: Optional[str]) -> None:
+        self.po_token = po_token
+
+    def _with_po_token(self, url: str) -> str:
+        if not url or not self.po_token:
+            return url
+        parsed = urllib.parse.urlsplit(url)
+        query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        if not any(key == "pot" for key, _ in query):
+            query.append(("pot", self.po_token))
+        return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urllib.parse.urlencode(query), parsed.fragment))
+
+    def _from_cipher(self, yt_format: dict) -> Optional[str]:
+        cipher = getValue(yt_format, ["signatureCipher"]) or getValue(yt_format, ["cipher"])
+        if not cipher:
+            return None
+        values = urllib.parse.parse_qs(cipher)
+        url = getValue(values, ["url", 0])
+        if not url:
+            return None
+        signature = getValue(values, ["sig", 0]) or getValue(values, ["signature", 0])
+        encrypted = getValue(values, ["s", 0])
+        if encrypted and not signature:
+            return None
+        if signature:
+            key = getValue(values, ["sp", 0]) or "signature"
+            parsed = urllib.parse.urlsplit(url)
+            query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+            query.append((key, signature))
+            url = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urllib.parse.urlencode(query), parsed.fragment))
+        return url
+
+    def _getDecipheredURLs(self, videoFormats: dict, formatId: int = None) -> None:
+        self._streams = []
+        self._unresolved = []
+        self.video_id = videoFormats.get("id") or videoFormats.get("videoId")
+        streaming_data = videoFormats.get("streamingData") or {}
+        formats = list(streaming_data.get("formats") or []) + list(streaming_data.get("adaptiveFormats") or [])
+        for source in formats:
+            if formatId is not None and source.get("itag") != formatId:
+                continue
+            yt_format = copy.deepcopy(source)
+            url = yt_format.get("url") or self._from_cipher(yt_format)
+            if not url:
+                unresolved = copy.deepcopy(yt_format)
+                unresolved["requiresDecipher"] = bool(yt_format.get("signatureCipher") or yt_format.get("cipher"))
+                self._unresolved.append(unresolved)
+                continue
+            yt_format["url"] = self._with_po_token(url)
+            yt_format["throttled"] = "n=" in urllib.parse.urlsplit(url).query
+            self._streams.append(yt_format)
+            if formatId is not None:
+                return
+
+    def unresolved(self):
+        return copy.deepcopy(self._unresolved)
+
+    def _getJS(self) -> None:
+        return None
+
+    async def getJavaScript(self):
+        return None

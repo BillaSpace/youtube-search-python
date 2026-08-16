@@ -1,310 +1,87 @@
-## Quick Documentations ✳️
+# yt-search-python 2.2.1 API notes
 
-### This is the updated and complete documentation for yt-search-python, highlighting modern async-first design.
- For full usage guides and examples, [visit the Docs:](https://github.com/BillaSpace/yt-search-python/docs/)
+The canonical project overview and current examples live in `README.md` and the files under `docs/`.
 
+## Sync search
 
----
+```python
+from youtubesearchpython import VideosSearch
 
-## 🚀 Modern Async API [future] — New in v2.0.0 [ stays same in newer version with library optimizations ]
-
-### yt-search-python introduces a fully modern asynchronous API under the youtubesearchpython.future module with modern Features that Not Even One Single Library offers in the world that is recommendations & Search Suggestions.
-
-- Async Advantages
-
-- Faster requests using httpx
-
-- Cleaner parallel querying
-
-- More consistent results
-
-- Fully non-blocking I/O
-
-
-### All major features support async:
-
-VideosSearch
-
-ChannelsSearch
-
-PlaylistsSearch
-
-CustomSearch
-
-ChannelSearch
-
-Video / Channel / Playlist
-
-Comments
-
-Suggestions
-
-Recommendations
-
-StreamURLFetcher
-
-Transcript
-
-
-Example:
-
-`from youtubesearchpython.future import VideosSearch
-results = await VideosSearch("Arijit Singh", limit=10).next()`
-
-Sync API (Legacy-Compatible)
-
-The original synchronous API remains unchanged for backward compatibility.
-
-Example:
-
-`from youtubesearchpython import VideosSearch
 search = VideosSearch("Arijit Singh", limit=10)
-print(search.result())`
+print(search.result())
+search.next()
+print(search.result())
+```
 
+Live-only search:
 
----
+```python
+search = VideosSearch("news", is_live=True)
+```
 
-## Core Search Classes
+## Async search
 
-**VideosSearch**
+```python
+from youtubesearchpython.future import VideosSearch
 
-Searches for videos via query or video_id.
+search = VideosSearch("Arijit Singh", limit=10)
+first = await search.next()
+second = await search.next()
+```
 
-Sync Constructor:
+## Video and formats
 
-`VideosSearch(query: str, limit: int = 20, language: str = 'en', region: str = 'US', timeout: int = None)`
+```python
+from youtubesearchpython import Video
 
-Sync Methods:
+info = Video.getInfo("pnxL4OOzPEc")
+formats = Video.getFormats("pnxL4OOzPEc", po_token="TOKEN", visitor_data="VISITOR_DATA")
+```
 
-`result(mode) — returns current results`
+## StreamURLFetcher
 
-`next() — fetch next page`
+```python
+from youtubesearchpython import StreamURLFetcher
 
+fetcher = StreamURLFetcher(po_token="TOKEN", visitor_data="VISITOR_DATA")
+result = fetcher.getAll("pnxL4OOzPEc")
+```
 
-Async Version:
+The stream fetcher does not depend on yt-dlp. It returns direct/already-signed formats and reports encrypted player-JavaScript formats under `unresolved` instead of fabricating a working URL.
 
-`await VideosSearch(...).next()`
+## Playlists
 
-Returns the next page directly as a dict.
+```python
+from youtubesearchpython import Playlist
 
+regular = Playlist.get("PLRBp0Fe2GpgmsW46rJyudVFlY6IYjFBIK")
+mix = Playlist.get("https://youtube.com/playlist?list=RDpnxL4OOzPEc&playnext=1")
+```
 
----
+Regular playlist pagination uses `Playlist(link).getNextVideos()`. Mix/Radio results use the native `/next` response and preserve YouTube's returned order.
 
-**ChannelsSearch**
+## Recommendations
 
-Search YouTube channels via channel_id.
+```python
+from youtubesearchpython import Recommendations
 
-Sync:
+videos = Recommendations.get("pnxL4OOzPEc")
+```
 
-`result(mode)`
+Results preserve backend order, skip the source ID and remove duplicate video IDs stably.
 
-`next()`
+## Shutdown
 
-
-Async:
-
-`await next()`
-
-
-
----
-
-**PlaylistsSearch**
-
-Search playlists both url or  id.
-
-Sync & Async parity:
-
-`.result() / await .next()`
-
-
-
----
-
-**CustomSearch**
-
-Custom filtered search eg: regional biased or filter specifics.
-
-Supports sync + async.
-
-`CustomSearch(query, searchPreferences, limit, language, region, timeout)`
-
-
----
-
-**ChannelSearch**
-
-Search within a specific channel via query.
-
-Supports sync + async.
-
-`ChannelSearch(query, browseId, language, region, searchPreferences, timeout)`
-
-
----
-
-## Content Retrieval Classes
-
-**Video**
-
-Retrieves video metadata and streaming formats via url.
-
-Sync:
-
-`get(video_id)`
-
-`getFormats(video_id)`
-
+```python
+# Optional forced teardown only
+from youtubesearchpython import close_clients
+close_clients()
+```
 
 Async:
 
-`await Video.get(video_id)`
-
-`await Video.getInfo(video_id)`
-
-`await Video.getFormats(video_id)`
-
-
-
----
-
-**Channel**
-
-Retrieve channel info + playlists via channel_id.
-
-Sync:
-
-`get(channelId)`
-
-
-Async:
-
-`await Channel.get(channel_id)`
-
-Instance-based async navigation with .init() and .next() [ experimental]
-
-
-
----
-
-**Youtube / Music Playlists**
-
-Fetch playlist info and videos via playlist urls or playlist_id.
-
-Sync:
-
-`get(playlistUrl)`
-
-`Instance .getNextVideos()`
-
-
-Async:
-
-`await Playlist.get(playlistUrl)`
-
-Instance .init() and await getNextVideos()
-
-
-
----
-
-**Video Comments**
-
-Fetch comments from a video via url or video_id.
-
-Sync:
-
-`get(videoUrl)`
-
-`.getNextComments()`
-
-
-Async:
-
-`await Comments.get(videoUrl)`
-
-Instance .init() and await getNextComments()
-
-
-
----
-
-**Search Suggestions**
-
-Retrieve search suggestions via query.
-
-Sync:
-
-`get(query)` (static)
-
-instance .get(query)
-
-
-Async:
-
-`await Suggestions.get(query)`
-
-instance await get(query)
-
-
-
----
-
-**Song Recommendations**
-
-Get related videos via video_id.
-
-Sync:
-
-`get(videoId)` → list
-
-
-Async:
-
-`await Recommendations.get(videoId)` → list
-
-
-
----
-
-**Transcript**
-
-Retrieve video transcripts.
-
-Sync:
-
-`get(video_url)`
-
-
-Async:
-
-`await Transcript.get(video_url)`
-
-
-Note: Transcript availability may vary due to YouTube restrictions Use cookies.
-
-
----
-
-**StreamURLFetcher**
-
-Directly fetch streaming URLs.
-
-Sync:
-
-`get(video_data, itag)`
-
-`getAll(video_data)`
-
-
-Async:
-
-`await get(...)`
-
-`await getAll(...)`
-
-`await getJavaScript()`
-
-
-
----
+```python
+# Optional forced teardown only
+from youtubesearchpython.future import aclose_clients
+await aclose_clients()
+```

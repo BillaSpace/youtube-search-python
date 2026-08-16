@@ -5,7 +5,7 @@ long_description=Path("README.md").read_text(encoding="utf-8")
 
 setuptools.setup(
     name="yt-search-python",
-    version="2.1.1",
+    version="2.2.1",
     author="Prakhar-Shukla",
     license="MIT",
     author_email="srvopus@gmail.com",
@@ -17,12 +17,24 @@ setuptools.setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        "httpx>=0.28.1"
+        "httpx>=0.28.1,<1.0"
     ],
     extras_require={
         "transcript":[
             'yt-dlp; python_version >= "3.10"'
         ]
     },
-    python_requires=">=3.7"
+    python_requires=">=3.9",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+        "Framework :: AsyncIO",
+        "Operating System :: OS Independent",
+    ]
 )
