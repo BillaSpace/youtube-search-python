@@ -3,10 +3,16 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/yt-search-python/"><img src="https://img.shields.io/pypi/v/yt-search-python?label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/yt-search-python/">
+    <img src="https://img.shields.io/pypi/v/yt-search-python?label=PyPI" alt="PyPI">
+  </a>
   <img src="https://img.shields.io/pypi/pyversions/yt-search-python" alt="Python versions">
-  <a href="https://github.com/BillaSpace/yt-search-python/blob/legacy/LICENSE"><img src="https://img.shields.io/github/license/BillaSpace/yt-search-python" alt="License"></a>
-  <a href="https://github.com/BillaSpace/yt-search-python/tree/legacy"><img src="https://img.shields.io/badge/API-Sync%20%2B%20Async-blue" alt="Sync and Async"></a>
+  <a href="https://github.com/BillaSpace/yt-search-python/blob/legacy/LICENSE">
+    <img src="https://img.shields.io/github/license/BillaSpace/yt-search-python?branch=legacy" alt="License">
+  </a>
+  <a href="https://github.com/BillaSpace/yt-search-python/tree/legacy">
+    <img src="https://img.shields.io/badge/API-Sync%20%2B%20Async-blue" alt="Sync and Async">
+  </a>
 </p>
 
 # yt-search-python v2.2.1
