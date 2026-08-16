@@ -4,9 +4,9 @@
 
 <p align="center">
   <a href="https://pypi.org/project/yt-search-python/">
-    <img src="https://img.shields.io/pypi/v/yt-search-python?label=PyPI" alt="PyPI">
+    <img src="https://img.shields.io/pypi/v/yt-search-python?label=PyPI&cacheSeconds=60" alt="PyPI">
   </a>
-  <img src="https://img.shields.io/pypi/pyversions/yt-search-python" alt="Python versions">
+  <img src="https://img.shields.io/pypi/pyversions/yt-search-python?cacheSeconds=60" alt="Python versions">
   <a href="https://github.com/BillaSpace/yt-search-python/blob/legacy/LICENSE">
     <img src="https://img.shields.io/github/license/BillaSpace/yt-search-python?branch=legacy" alt="License">
   </a>
